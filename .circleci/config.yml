@@ -1,0 +1,16 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: grokloc/grokloc-go:dev
+    environment:
+        GROKLOC_ENV: "UNIT"
+        APP_HOST: "localhost"
+        APP_PORT: "3000"
+        CI: "1"
+    working_directory: /grokloc
+    steps:
+      - checkout
+      - run: golangci-lint --timeout=24h run pkg/...
+      - run: golint pkg/...
+      - run: go test -v -race ./...
