@@ -2,6 +2,7 @@
 // NOTE: production, migrated schemas are not managed here
 package schemas
 
+// AppCreate creates the entire app schema
 const AppCreate = `
 create table if not exists users (
        api_secret text unique not null,

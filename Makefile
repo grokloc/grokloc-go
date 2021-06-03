@@ -25,10 +25,20 @@ mod:
 shell:
 	$(RUN) /bin/bash
 
+# Checks in local shell.
+.PHONY: local-check
+local-check:
+	golangci-lint --timeout=24h run pkg/... && golint pkg/...
+
 # Checks in container.
 .PHONY: check
 check:
 	$(RUN) golangci-lint --timeout=24h run pkg/... && golint pkg/...
+
+# Tests in local shell.
+.PHONY: local-test
+local-test:
+	go test -v -race ./...
 
 # Tests in container.
 .PHONY: test

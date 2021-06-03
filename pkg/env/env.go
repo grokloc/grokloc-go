@@ -8,6 +8,7 @@ type Level int
 
 // env levels
 const (
+	None  = Level(-1)
 	Unit  = Level(0)
 	Dev   = Level(1)
 	Stage = Level(2)
@@ -26,6 +27,6 @@ func NewLevel(level string) (Level, error) {
 	case "PROD":
 		return Prod, nil
 	default:
-		return -1, errors.New("unknown level")
+		return None, errors.New("unknown level")
 	}
 }
