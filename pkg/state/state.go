@@ -6,13 +6,15 @@ import (
 	"errors"
 
 	"github.com/grokloc/grokloc-go/pkg/env"
+	"github.com/matthewhartstonge/argon2"
 )
 
 // Instance is a single set of conns
 type Instance struct {
 	Master                               *sql.DB
 	Replicas                             []*sql.DB
-	Key                                  string
+	Key                                  []byte
+	Argon2Cfg                            argon2.Config
 	RootOrg, RootUser, RootUserAPISecret string
 }
 
