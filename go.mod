@@ -4,6 +4,8 @@ go 1.16
 
 replace (
 	github.com/grokloc/grokloc-go/pkg/env => ./pkg/env
+	github.com/grokloc/grokloc-go/pkg/models => ./pkg/models
+	github.com/grokloc/grokloc-go/pkg/models/org => ./pkg/models/org
 	github.com/grokloc/grokloc-go/pkg/schemas => ./pkg/schemas
 	github.com/grokloc/grokloc-go/pkg/security => ./pkg/security
 )

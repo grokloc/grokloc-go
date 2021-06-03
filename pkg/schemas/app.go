@@ -2,6 +2,12 @@
 // NOTE: production, migrated schemas are not managed here
 package schemas
 
+// exported table names
+const (
+	OrgsTableName  = "orgs"
+	UsersTableName = "users"
+)
+
 // AppCreate creates the entire app schema
 const AppCreate = `
 create table if not exists users (
