@@ -14,7 +14,7 @@ import (
 )
 
 // unitInstance builds an instance for the Unit environment
-func unitInstance() Instance {
+func unitInstance() *Instance {
 	db, err := sql.Open("sqlite3", "file::memory:?mode=memory&cache=shared")
 	if err != nil {
 		log.Fatal(err)
@@ -29,7 +29,7 @@ func unitInstance() Instance {
 	if err != nil {
 		log.Fatal(err)
 	}
-	return Instance{
+	return &Instance{
 		Master:    db,
 		Replicas:  []*sql.DB{db},
 		Key:       key,
