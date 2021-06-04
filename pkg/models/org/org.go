@@ -34,7 +34,7 @@ func New(name string) (*Instance, error) {
 	o := &Instance{Name: name, Owner: OwnerNone}
 	o.ID = uuid.NewString()
 	o.Meta.SchemaVersion = SchemaVersion
-	o.Meta.Status = models.Unconfirmed
+	o.Meta.Status = models.StatusUnconfirmed
 	return o, nil
 }
 
@@ -87,4 +87,12 @@ func Read(ctx context.Context, db *sql.DB, id string) (*Instance, error) {
 		return nil, models.ErrModelMigrate
 	}
 	return o, nil
+}
+
+// UpdateStatus sets the org status
+func (o *Instance) UpdateStatus(ctx context.Context, db *sql.DB, status models.Status) error {
+	if status == models.StatusNone {
+		return errors.New("cannot use None as a stored status")
+	}
+	return models.Update(ctx, db, schemas.OrgsTableName, o.ID, "status", status)
 }

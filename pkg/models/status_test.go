@@ -21,13 +21,13 @@ func (suite *StatusSuite) TestStatus() {
 	require.Error(suite.T(), err)
 	status, err = NewStatus(0)
 	require.Nil(suite.T(), err)
-	require.Equal(suite.T(), Unconfirmed, status)
+	require.Equal(suite.T(), StatusUnconfirmed, status)
 	status, err = NewStatus(1)
 	require.Nil(suite.T(), err)
-	require.Equal(suite.T(), Active, status)
+	require.Equal(suite.T(), StatusActive, status)
 	status, err = NewStatus(2)
 	require.Nil(suite.T(), err)
-	require.Equal(suite.T(), Inactive, status)
+	require.Equal(suite.T(), StatusInactive, status)
 }
 
 func TestStatusSuite(t *testing.T) {

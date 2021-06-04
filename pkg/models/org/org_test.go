@@ -60,6 +60,38 @@ func (suite *OrgSuite) TestReadOrg() {
 	require.NotEqual(suite.T(), o.Meta.Mtime, oRead.Meta.Mtime)
 }
 
+func (suite *OrgSuite) TestUpdateOrgStatus() {
+	o, err := New(uuid.NewString())
+	require.Nil(suite.T(), err)
+
+	// not yet inserted
+	err = o.UpdateStatus(context.Background(), suite.ST.Master, models.StatusActive)
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), sql.ErrNoRows, err)
+
+	// fix that
+	err = o.Insert(context.Background(), suite.ST.Master)
+	require.Nil(suite.T(), err)
+
+	// demonstrate that the status is not active
+	oRead, err := Read(context.Background(), suite.ST.RandomReplica(), o.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), models.StatusUnconfirmed, oRead.Meta.Status)
+
+	// update again
+	err = o.UpdateStatus(context.Background(), suite.ST.Master, models.StatusActive)
+	require.Nil(suite.T(), err)
+
+	// re-read to be sure, check changed status
+	oRead, err = Read(context.Background(), suite.ST.RandomReplica(), o.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), models.StatusActive, oRead.Meta.Status)
+
+	// None not allowed
+	err = o.UpdateStatus(context.Background(), suite.ST.Master, models.StatusNone)
+	require.Error(suite.T(), err)
+}
+
 func TestOrgSuite(t *testing.T) {
 	suite.Run(t, new(OrgSuite))
 }

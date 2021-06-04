@@ -1,30 +1,35 @@
 // Package models provides shared model definitions
 package models
 
-import "errors"
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+)
 
 // Status is an int when stored
 type Status int
 
 // exported status values
 const (
-	None        = Status(-1)
-	Unconfirmed = Status(0)
-	Active      = Status(1)
-	Inactive    = Status(2)
+	StatusNone        = Status(-1)
+	StatusUnconfirmed = Status(0)
+	StatusActive      = Status(1)
+	StatusInactive    = Status(2)
 )
 
 // NewStatus creates a Status from an int
 func NewStatus(status int) (Status, error) {
 	switch status {
 	case 0:
-		return Unconfirmed, nil
+		return StatusUnconfirmed, nil
 	case 1:
-		return Active, nil
+		return StatusActive, nil
 	case 2:
-		return Inactive, nil
+		return StatusInactive, nil
 	default:
-		return None, errors.New("unknown status")
+		return StatusNone, errors.New("unknown status")
 	}
 }
 
@@ -40,4 +45,25 @@ type Meta struct {
 type Base struct {
 	ID   string `json:"id"`
 	Meta Meta   `json:"meta"`
+}
+
+// Update changes the value of a column given a tablename, column name and id
+func Update(ctx context.Context, db *sql.DB, tableName, id, colName string, val interface{}) error {
+	q := fmt.Sprintf("update %s set %s = $1 where id = $2", tableName, colName)
+	result, err := db.ExecContext(ctx, q, val, id)
+	if err != nil {
+		return err
+	}
+	updated, err := result.RowsAffected()
+	if err != nil {
+		// the db does not support a basic feature
+		panic("cannot exec RowsAffected:" + err.Error())
+	}
+	if updated == 0 {
+		return sql.ErrNoRows
+	}
+	if updated != 1 {
+		return ErrRowsAffected
+	}
+	return nil
 }

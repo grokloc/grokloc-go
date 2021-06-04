@@ -28,12 +28,12 @@ shell:
 # Checks in local shell.
 .PHONY: local-check
 local-check:
-	golangci-lint --timeout=24h run pkg/... && golint pkg/...
+	golangci-lint --timeout=24h run pkg/... && golint pkg/... && go vet ./...
 
 # Checks in container.
 .PHONY: check
 check:
-	$(RUN) golangci-lint --timeout=24h run pkg/... && golint pkg/...
+	$(RUN) golangci-lint --timeout=24h run pkg/... && golint pkg/... && go vet ./...
 
 # Tests in local shell.
 .PHONY: local-test
