@@ -89,6 +89,12 @@ func Read(ctx context.Context, db *sql.DB, id string) (*Instance, error) {
 	return o, nil
 }
 
+// UpdateOwner sets the org owner
+// TODO check owner exists, is in same org, is active
+func (o *Instance) UpdateOwner(ctx context.Context, db *sql.DB, owner string) error {
+	return models.Update(ctx, db, schemas.OrgsTableName, o.ID, "owner", owner)
+}
+
 // UpdateStatus sets the org status
 func (o *Instance) UpdateStatus(ctx context.Context, db *sql.DB, status models.Status) error {
 	if status == models.StatusNone {
