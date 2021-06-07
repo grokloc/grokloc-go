@@ -1,5 +1,5 @@
 FROM debian:bullseye-slim
-ARG GO_TGZ=go1.16.4.linux-amd64.tar.gz
+ARG GO_TGZ=go1.16.5.linux-amd64.tar.gz
 RUN apt-get update
 RUN apt-get -y install curl ca-certificates libsqlite3-dev gcc
 WORKDIR /
