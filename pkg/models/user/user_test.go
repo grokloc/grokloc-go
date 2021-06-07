@@ -3,6 +3,7 @@ package user
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"testing"
 
@@ -41,22 +42,28 @@ func (suite *UserSuite) TestInsertUser() {
 
 func (suite *UserSuite) TestReadUser() {
 	// not found
-	// _, err := Read(context.Background(), suite.ST.RandomReplica(), uuid.NewString())
-	// require.Error(suite.T(), err)
-	// require.Equal(suite.T(), sql.ErrNoRows, err)
+	_, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, uuid.NewString())
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), sql.ErrNoRows, err)
 
-	// o, err := New(uuid.NewString())
-	// require.Nil(suite.T(), err)
-	// err = u.Insert(context.Background(), suite.ST.Master)
-	// require.Nil(suite.T(), err)
+	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString())
+	require.Nil(suite.T(), err)
+	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Nil(suite.T(), err)
 
-	// oRead, err := Read(context.Background(), suite.ST.RandomReplica(), o.ID)
-	// require.Nil(suite.T(), err)
-	// require.Equal(suite.T(), o.ID, oRead.ID)
-	// require.Equal(suite.T(), o.Name, oRead.Name)
-	// require.Equal(suite.T(), o.Owner, oRead.Owner)
-	// require.NotEqual(suite.T(), o.Meta.Ctime, oRead.Meta.Ctime)
-	// require.NotEqual(suite.T(), o.Meta.Mtime, oRead.Meta.Mtime)
+	uRead, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), u.ID, uRead.ID)
+	require.Equal(suite.T(), u.APISecret, uRead.APISecret)
+	require.Equal(suite.T(), u.APISecretDigest, uRead.APISecretDigest)
+	require.Equal(suite.T(), u.DisplayName, uRead.DisplayName)
+	require.Equal(suite.T(), u.DisplayNameDigest, uRead.DisplayNameDigest)
+	require.Equal(suite.T(), u.Email, uRead.Email)
+	require.Equal(suite.T(), u.EmailDigest, uRead.EmailDigest)
+	require.Equal(suite.T(), u.Org, uRead.Org)
+	require.Equal(suite.T(), u.Password, uRead.Password)
+	require.NotEqual(suite.T(), u.Meta.Ctime, uRead.Meta.Ctime)
+	require.NotEqual(suite.T(), u.Meta.Mtime, uRead.Meta.Mtime)
 }
 
 func (suite *UserSuite) TestUpdateUserStatus() {

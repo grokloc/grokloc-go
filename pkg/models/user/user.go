@@ -99,3 +99,50 @@ func (u *Instance) Insert(ctx context.Context, db *sql.DB, key []byte) error {
 	}
 	return nil
 }
+
+// Read initializes an Instance based on a database row
+func Read(ctx context.Context, db *sql.DB, key []byte, id string) (*Instance, error) {
+	q := fmt.Sprintf("select api_secret,api_secret_digest,display_name,display_name_digest,email,email_digest,org,password,ctime,mtime,status,schema_version from %s where id = $1",
+		schemas.UsersTableName)
+	var statusRaw int
+	u := &Instance{}
+	u.ID = id
+	var encryptedAPISecret, encryptedDisplayName, encryptedEmail string
+	err := db.QueryRowContext(ctx, q, id).Scan(
+		&encryptedAPISecret,
+		&u.APISecretDigest,
+		&encryptedDisplayName,
+		&u.DisplayNameDigest,
+		&encryptedEmail,
+		&u.EmailDigest,
+		&u.Org,
+		&u.Password,
+		&u.Meta.Ctime,
+		&u.Meta.Mtime,
+		&statusRaw,
+		&u.Meta.SchemaVersion)
+	if err != nil {
+		return nil, err
+	}
+	u.APISecret, err = security.Decrypt(encryptedAPISecret, key)
+	if err != nil {
+		return nil, err
+	}
+	u.DisplayName, err = security.Decrypt(encryptedDisplayName, key)
+	if err != nil {
+		return nil, err
+	}
+	u.Email, err = security.Decrypt(encryptedEmail, key)
+	if err != nil {
+		return nil, err
+	}
+	u.Meta.Status, err = models.NewStatus(statusRaw)
+	if err != nil {
+		return nil, err
+	}
+	if u.Meta.SchemaVersion != SchemaVersion {
+		// handle migrating different versions, or err
+		return nil, models.ErrModelMigrate
+	}
+	return u, nil
+}
