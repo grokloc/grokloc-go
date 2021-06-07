@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grokloc/grokloc-go/pkg/env"
+	"github.com/grokloc/grokloc-go/pkg/models"
 	"github.com/grokloc/grokloc-go/pkg/state"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -32,10 +33,10 @@ func (suite *UserSuite) TestInsertUser() {
 	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
 	require.Nil(suite.T(), err)
 
-	// // duplicate
-	// err = u.Insert(context.Background(), suite.ST.Master)
-	// require.Error(suite.T(), err)
-	// require.Equal(suite.T(), models.ErrConflict, err)
+	// duplicate
+	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), models.ErrConflict, err)
 }
 
 func (suite *UserSuite) TestReadUser() {

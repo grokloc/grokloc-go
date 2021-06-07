@@ -15,4 +15,5 @@ require (
 	github.com/matthewhartstonge/argon2 v0.1.4
 	github.com/mattn/go-sqlite3 v1.14.7
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/sys v0.0.0-20210510120138-977fb7262007 // indirect
 )
