@@ -146,3 +146,11 @@ func Read(ctx context.Context, db *sql.DB, key []byte, id string) (*Instance, er
 	}
 	return u, nil
 }
+
+// UpdateStatus sets the user status
+func (u *Instance) UpdateStatus(ctx context.Context, db *sql.DB, status models.Status) error {
+	if status == models.StatusNone {
+		return errors.New("cannot use None as a stored status")
+	}
+	return models.Update(ctx, db, schemas.UsersTableName, u.ID, "status", status)
+}

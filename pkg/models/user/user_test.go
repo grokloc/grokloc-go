@@ -67,35 +67,35 @@ func (suite *UserSuite) TestReadUser() {
 }
 
 func (suite *UserSuite) TestUpdateUserStatus() {
-	// o, err := New(uuid.NewString())
-	// require.Nil(suite.T(), err)
+	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString())
+	require.Nil(suite.T(), err)
 
-	// // not yet inserted
-	// err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusActive)
-	// require.Error(suite.T(), err)
-	// require.Equal(suite.T(), sql.ErrNoRows, err)
+	// not yet inserted
+	err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusActive)
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), sql.ErrNoRows, err)
 
-	// // fix that
-	// err = u.Insert(context.Background(), suite.ST.Master)
-	// require.Nil(suite.T(), err)
+	// fix that
+	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Nil(suite.T(), err)
 
-	// // demonstrate that the status is not active
-	// oRead, err := Read(context.Background(), suite.ST.RandomReplica(), o.ID)
-	// require.Nil(suite.T(), err)
-	// require.Equal(suite.T(), models.StatusUnconfirmed, oRead.Meta.Status)
+	// demonstrate that the status is not active
+	uRead, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), models.StatusUnconfirmed, uRead.Meta.Status)
 
-	// // update again
-	// err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusActive)
-	// require.Nil(suite.T(), err)
+	// update again
+	err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusActive)
+	require.Nil(suite.T(), err)
 
-	// // re-read to be sure, check changed status
-	// oRead, err = Read(context.Background(), suite.ST.RandomReplica(), o.ID)
-	// require.Nil(suite.T(), err)
-	// require.Equal(suite.T(), models.StatusActive, oRead.Meta.Status)
+	// re-read to be sure, check changed status
+	uRead, err = Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), models.StatusActive, uRead.Meta.Status)
 
-	// // None not allowed
-	// err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusNone)
-	// require.Error(suite.T(), err)
+	// None not allowed
+	err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusNone)
+	require.Error(suite.T(), err)
 }
 
 func TestUserSuite(t *testing.T) {
