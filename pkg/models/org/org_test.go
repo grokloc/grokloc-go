@@ -60,6 +60,10 @@ func (suite *OrgSuite) TestReadOrg() {
 	require.NotEqual(suite.T(), o.Meta.Mtime, oRead.Meta.Mtime)
 }
 
+func (suite *OrgSuite) TestUpdateOrgOwner() {
+	require.True(suite.T(), true)
+}
+
 func (suite *OrgSuite) TestUpdateOrgStatus() {
 	o, err := New(uuid.NewString())
 	require.Nil(suite.T(), err)

@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grokloc/grokloc-go/pkg/env"
 	"github.com/grokloc/grokloc-go/pkg/models"
+	"github.com/grokloc/grokloc-go/pkg/security"
 	"github.com/grokloc/grokloc-go/pkg/state"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -29,7 +30,9 @@ func (suite *UserSuite) SetupTest() {
 }
 
 func (suite *UserSuite) TestInsertUser() {
-	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString())
+	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	require.Nil(suite.T(), err)
+	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
 	require.Nil(suite.T(), err)
 	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
 	require.Nil(suite.T(), err)
@@ -46,7 +49,9 @@ func (suite *UserSuite) TestReadUser() {
 	require.Error(suite.T(), err)
 	require.Equal(suite.T(), sql.ErrNoRows, err)
 
-	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString())
+	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	require.Nil(suite.T(), err)
+	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
 	require.Nil(suite.T(), err)
 	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
 	require.Nil(suite.T(), err)
@@ -66,8 +71,75 @@ func (suite *UserSuite) TestReadUser() {
 	require.NotEqual(suite.T(), u.Meta.Mtime, uRead.Meta.Mtime)
 }
 
+func (suite *UserSuite) TestUpdateUserDisplayName() {
+	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	require.Nil(suite.T(), err)
+	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
+	require.Nil(suite.T(), err)
+
+	// not yet inserted
+	err = u.UpdateDisplayName(context.Background(), suite.ST.Master, suite.ST.Key, uuid.NewString())
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), sql.ErrNoRows, err)
+
+	// fix that
+	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Nil(suite.T(), err)
+
+	// read in current state
+	uRead, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), u.DisplayName, uRead.DisplayName)
+	require.Equal(suite.T(), u.DisplayNameDigest, uRead.DisplayNameDigest)
+
+	// update again
+	displayName := uuid.NewString()
+	err = u.UpdateDisplayName(context.Background(), suite.ST.Master, suite.ST.Key, displayName)
+	require.Nil(suite.T(), err)
+
+	// re-read to be sure, check changed status
+	uRead, err = Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), displayName, uRead.DisplayName)
+	require.Equal(suite.T(), security.EncodedSHA256(displayName), uRead.DisplayNameDigest)
+}
+
+func (suite *UserSuite) TestUpdateUserPassword() {
+	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	require.Nil(suite.T(), err)
+	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
+	require.Nil(suite.T(), err)
+
+	// not yet inserted
+	err = u.UpdatePassword(context.Background(), suite.ST.Master, uuid.NewString())
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), sql.ErrNoRows, err)
+
+	// fix that
+	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Nil(suite.T(), err)
+
+	// read in current state
+	uRead, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), u.Password, uRead.Password)
+
+	// update again
+	password, err = security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	require.Nil(suite.T(), err)
+	err = u.UpdatePassword(context.Background(), suite.ST.Master, password)
+	require.Nil(suite.T(), err)
+
+	// re-read to be sure, check changed status
+	uRead, err = Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	require.Nil(suite.T(), err)
+	require.Equal(suite.T(), password, uRead.Password)
+}
+
 func (suite *UserSuite) TestUpdateUserStatus() {
-	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), uuid.NewString())
+	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	require.Nil(suite.T(), err)
+	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
 	require.Nil(suite.T(), err)
 
 	// not yet inserted

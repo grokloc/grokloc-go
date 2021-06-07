@@ -32,6 +32,7 @@ type Instance struct {
 }
 
 // New creates a new user that hasn't been created before
+// password assumed derived
 func New(displayName, email, org, password string) (*Instance, error) {
 	for _, v := range []string{displayName, email, org, password} {
 		if !security.SafeStr(v) {
@@ -145,6 +146,46 @@ func Read(ctx context.Context, db *sql.DB, key []byte, id string) (*Instance, er
 		return nil, models.ErrModelMigrate
 	}
 	return u, nil
+}
+
+// UpdateDisplayName sets the user display name
+func (u *Instance) UpdateDisplayName(ctx context.Context, db *sql.DB, key []byte, displayName string) error {
+	if !security.SafeStr(displayName) {
+		return errors.New("display name malformed")
+	}
+
+	// both the display name and the digest must be reset
+	encryptedDisplayName, err := security.Encrypt(displayName, key)
+	if err != nil {
+		return err
+	}
+
+	q := "update users set display_name = $1, display_name_digest = $2 where id = $3"
+	result, err := db.ExecContext(ctx, q, encryptedDisplayName, security.EncodedSHA256(displayName), u.ID)
+	if err != nil {
+		return err
+	}
+	updated, err := result.RowsAffected()
+	if err != nil {
+		// the db does not support a basic feature
+		panic("cannot exec RowsAffected:" + err.Error())
+	}
+	if updated == 0 {
+		return sql.ErrNoRows
+	}
+	if updated != 1 {
+		return models.ErrRowsAffected
+	}
+	return nil
+}
+
+// UpdatePassword sets the user password
+// password assumed derived
+func (u *Instance) UpdatePassword(ctx context.Context, db *sql.DB, password string) error {
+	if !security.SafeStr(password) {
+		return errors.New("password malformed")
+	}
+	return models.Update(ctx, db, schemas.UsersTableName, u.ID, "password", password)
 }
 
 // UpdateStatus sets the user status
