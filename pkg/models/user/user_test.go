@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/grokloc/grokloc-go/pkg/env"
 	"github.com/grokloc/grokloc-go/pkg/models"
+	"github.com/grokloc/grokloc-go/pkg/models/org"
 	"github.com/grokloc/grokloc-go/pkg/security"
 	"github.com/grokloc/grokloc-go/pkg/state"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,8 @@ import (
 
 type UserSuite struct {
 	suite.Suite
-	ST *state.Instance
+	ST  *state.Instance
+	Org *org.Instance
 }
 
 func (suite *UserSuite) SetupTest() {
@@ -27,12 +29,41 @@ func (suite *UserSuite) SetupTest() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	suite.Org, err = org.New(uuid.NewString())
+	if err != nil {
+		log.Fatal(err)
+	}
+	suite.Org.Meta.Status = models.StatusActive
+	err = suite.Org.Insert(context.Background(), suite.ST.Master)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func (suite *UserSuite) TestInsertUser() {
 	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
 	require.Nil(suite.T(), err)
+
+	// org not there
 	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
+	require.Nil(suite.T(), err)
+	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Error(suite.T(), err)
+
+	// org there but not active
+	o, err := org.New(uuid.NewString())
+	require.Nil(suite.T(), err)
+	o.Meta.Status = models.StatusInactive
+	err = o.Insert(context.Background(), suite.ST.Master)
+	require.Nil(suite.T(), err)
+
+	u, err = New(uuid.NewString(), uuid.NewString(), o.ID, password)
+	require.Nil(suite.T(), err)
+	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Error(suite.T(), err)
+
+	// org there and active
+	u, err = New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
 	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
 	require.Nil(suite.T(), err)
@@ -51,7 +82,7 @@ func (suite *UserSuite) TestReadUser() {
 
 	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
 	require.Nil(suite.T(), err)
-	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
+	u, err := New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
 	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
 	require.Nil(suite.T(), err)
@@ -74,7 +105,7 @@ func (suite *UserSuite) TestReadUser() {
 func (suite *UserSuite) TestUpdateUserDisplayName() {
 	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
 	require.Nil(suite.T(), err)
-	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
+	u, err := New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
 
 	// not yet inserted
@@ -107,7 +138,7 @@ func (suite *UserSuite) TestUpdateUserDisplayName() {
 func (suite *UserSuite) TestUpdateUserPassword() {
 	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
 	require.Nil(suite.T(), err)
-	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
+	u, err := New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
 
 	// not yet inserted
@@ -139,7 +170,7 @@ func (suite *UserSuite) TestUpdateUserPassword() {
 func (suite *UserSuite) TestUpdateUserStatus() {
 	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
 	require.Nil(suite.T(), err)
-	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
+	u, err := New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
 
 	// not yet inserted
