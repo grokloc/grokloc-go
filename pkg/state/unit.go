@@ -29,10 +29,16 @@ func unitInstance() *Instance {
 	if err != nil {
 		log.Fatal(err)
 	}
+	signingKey, err := security.MakeKey(uuid.NewString())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	return &Instance{
-		Master:    db,
-		Replicas:  []*sql.DB{db},
-		Key:       key,
-		Argon2Cfg: argon2.DefaultConfig(),
+		Master:     db,
+		Replicas:   []*sql.DB{db},
+		Key:        key,
+		SigningKey: signingKey,
+		Argon2Cfg:  argon2.DefaultConfig(),
 	}
 }

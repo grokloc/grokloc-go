@@ -15,6 +15,7 @@ type Instance struct {
 	Master                               *sql.DB
 	Replicas                             []*sql.DB
 	Key                                  []byte
+	SigningKey                           []byte
 	Argon2Cfg                            argon2.Config
 	RootOrg, RootUser, RootUserAPISecret string
 }
