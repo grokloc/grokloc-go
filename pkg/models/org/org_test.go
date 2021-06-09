@@ -10,6 +10,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/grokloc/grokloc-go/pkg/env"
 	"github.com/grokloc/grokloc-go/pkg/models"
+	"github.com/grokloc/grokloc-go/pkg/models/user"
+	"github.com/grokloc/grokloc-go/pkg/security"
 	"github.com/grokloc/grokloc-go/pkg/state"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -61,7 +63,45 @@ func (suite *OrgSuite) TestReadOrg() {
 }
 
 func (suite *OrgSuite) TestUpdateOrgOwner() {
-	require.True(suite.T(), true)
+	o, err := New(uuid.NewString())
+	require.Nil(suite.T(), err)
+	o.Meta.Status = models.StatusActive
+	err = o.Insert(context.Background(), suite.ST.Master)
+	require.Nil(suite.T(), err)
+
+	// try setting owner to an id not in the db
+	err = o.UpdateOwner(context.Background(), suite.ST.Master, uuid.NewString())
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), models.ErrRelatedUser, err)
+
+	// new owner in db but not active
+	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	require.Nil(suite.T(), err)
+	u, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, password)
+	require.Nil(suite.T(), err)
+	u.Meta.Status = models.StatusInactive
+	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Nil(suite.T(), err)
+	err = o.UpdateOwner(context.Background(), suite.ST.Master, u.ID)
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), models.ErrRelatedUser, err)
+
+	// user active but in different org
+	oOther, err := New(uuid.NewString())
+	require.Nil(suite.T(), err)
+	oOther.Meta.Status = models.StatusActive
+	err = oOther.Insert(context.Background(), suite.ST.Master)
+	require.Nil(suite.T(), err)
+	password, err = security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	require.Nil(suite.T(), err)
+	uOther, err := user.New(uuid.NewString(), uuid.NewString(), oOther.ID, password)
+	require.Nil(suite.T(), err)
+	uOther.Meta.Status = models.StatusActive
+	err = uOther.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	require.Nil(suite.T(), err)
+	err = o.UpdateOwner(context.Background(), suite.ST.Master, uOther.ID)
+	require.Error(suite.T(), err)
+	require.Equal(suite.T(), models.ErrRelatedUser, err)
 }
 
 func (suite *OrgSuite) TestUpdateOrgStatus() {

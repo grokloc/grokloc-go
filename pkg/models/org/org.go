@@ -38,8 +38,31 @@ func New(name string) (*Instance, error) {
 	return o, nil
 }
 
+// validOwner is used to determine if a prospective owner is
+// 1. exists
+// 2. is in the org
+// 3. is active
+func (o *Instance) validOwner(ctx context.Context, db *sql.DB, owner string) (bool, error) {
+	q := fmt.Sprintf("select count(*) from %s where id = $1 and org = $2 and status = $3", schemas.UsersTableName)
+	var count int
+	err := db.QueryRowContext(ctx, q, owner, o.ID, models.StatusActive).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return (count == 1), nil
+}
+
 // Insert a new row.
 func (o *Instance) Insert(ctx context.Context, db *sql.DB) error {
+	if o.Owner != OwnerNone {
+		isValid, err := o.validOwner(ctx, db, o.Owner)
+		if err != nil {
+			return err
+		}
+		if !isValid {
+			return models.ErrRelatedUser
+		}
+	}
 	q := fmt.Sprintf("insert into %s (id,name,owner,status,schema_version) values ($1,$2,$3,$4,$5)",
 		schemas.OrgsTableName)
 	result, err := db.ExecContext(ctx, q, o.ID, o.Name, o.Owner, o.Meta.Status, SchemaVersion)
@@ -91,6 +114,13 @@ func Read(ctx context.Context, db *sql.DB, id string) (*Instance, error) {
 // UpdateOwner sets the org owner
 // TODO check owner exists, is in same org, is active
 func (o *Instance) UpdateOwner(ctx context.Context, db *sql.DB, owner string) error {
+	isValid, err := o.validOwner(ctx, db, owner)
+	if err != nil {
+		return err
+	}
+	if !isValid {
+		return models.ErrRelatedUser
+	}
 	return models.Update(ctx, db, schemas.OrgsTableName, o.ID, "owner", owner)
 }
 
