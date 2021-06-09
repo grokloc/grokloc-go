@@ -39,7 +39,6 @@ func New(name string) (*Instance, error) {
 }
 
 // Insert a new row.
-// TODO - make sure owner is in the db and active prior to insertion
 func (o *Instance) Insert(ctx context.Context, db *sql.DB) error {
 	q := fmt.Sprintf("insert into %s (id,name,owner,status,schema_version) values ($1,$2,$3,$4,$5)",
 		schemas.OrgsTableName)
