@@ -55,7 +55,6 @@ func New(displayName, email, org, password string) (*Instance, error) {
 }
 
 // Insert a new row.
-// TODO - make sure org exists and is active
 func (u *Instance) Insert(ctx context.Context, db *sql.DB, key []byte) error {
 	// make sure the user's org is in the db and active
 	qOrg := fmt.Sprintf("select count(*) from %s where id = $1 and status = $2", schemas.OrgsTableName)
