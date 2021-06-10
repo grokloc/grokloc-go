@@ -8,7 +8,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/matthewhartstonge/argon2"
 	_ "github.com/mattn/go-sqlite3" //
+	"go.uber.org/zap"
 
+	"github.com/grokloc/grokloc-go/pkg/env"
 	"github.com/grokloc/grokloc-go/pkg/schemas"
 	"github.com/grokloc/grokloc-go/pkg/security"
 )
@@ -33,12 +35,17 @@ func unitInstance() *Instance {
 	if err != nil {
 		log.Fatal(err)
 	}
-
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		log.Fatal(err)
+	}
 	return &Instance{
+		Level:      env.Unit,
 		Master:     db,
 		Replicas:   []*sql.DB{db},
 		Key:        key,
 		SigningKey: signingKey,
 		Argon2Cfg:  argon2.DefaultConfig(),
+		L:          logger,
 	}
 }
