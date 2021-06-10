@@ -25,7 +25,7 @@ type UserSuite struct {
 
 func (suite *UserSuite) SetupTest() {
 	var err error
-	suite.ST, err = state.NewInstanceFromLevel(env.Unit)
+	suite.ST, err = state.New(env.Unit)
 	if err != nil {
 		log.Fatal(err)
 	}

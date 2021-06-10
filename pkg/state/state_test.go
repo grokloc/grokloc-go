@@ -14,7 +14,7 @@ type StateSuite struct {
 }
 
 func (suite *StateSuite) TestUnit() {
-	_, err := NewInstanceFromLevel(env.Unit)
+	_, err := New(env.Unit)
 	require.Nil(suite.T(), err)
 }
 

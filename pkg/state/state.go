@@ -24,8 +24,8 @@ type Instance struct {
 	L                                    *zap.Logger
 }
 
-// NewInstanceFromLevel creates a new instance for the given level
-func NewInstanceFromLevel(level env.Level) (*Instance, error) {
+// New creates a new instance for the given level
+func New(level env.Level) (*Instance, error) {
 	if level == env.None {
 		return nil, errors.New("no instance for None")
 	}

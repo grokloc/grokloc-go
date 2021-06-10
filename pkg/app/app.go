@@ -45,7 +45,7 @@ type Instance struct {
 
 // New creates a new app server Instance
 func New(level env.Level) (*Instance, error) {
-	st, err := state.NewInstanceFromLevel(level)
+	st, err := state.New(level)
 	if err != nil {
 		return nil, err
 	}
