@@ -44,7 +44,7 @@ func (s *Instance) RandomReplica() *sql.DB {
 	return s.Replicas[rand.Intn(l)]
 }
 
-// Close should be deferred in the main context.
+// Close should be deferred in the main context
 func (s *Instance) Close() error {
 	if s.Level == env.Unit {
 		err := s.Master.Close()
