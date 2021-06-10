@@ -52,7 +52,7 @@ func (s *Instance) Close() error {
 			return err
 		}
 	} else {
-		log.Fatal("env unsupported.")
+		log.Fatal("env unsupported")
 	}
 	return nil
 }
