@@ -1,4 +1,3 @@
-// Package models provides shared model definitions
 package models
 
 import (

@@ -1,4 +1,3 @@
-// Package env contains environment-designating symbols and functions
 package env
 
 import (

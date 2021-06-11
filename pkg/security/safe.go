@@ -1,4 +1,3 @@
-// Package security provides crypto and hashing support
 package security
 
 import "strings"

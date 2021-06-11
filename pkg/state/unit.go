@@ -1,4 +1,3 @@
-// Package state manages all external state conns
 package state
 
 import (

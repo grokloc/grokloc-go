@@ -1,4 +1,3 @@
-// Package org models an organization
 package org
 
 import (

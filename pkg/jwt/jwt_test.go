@@ -1,4 +1,3 @@
-// Package jwt manage authorization claims for the app
 package jwt
 
 import (

@@ -1,4 +1,3 @@
-// Package security provides crypto and hashing support
 package security
 
 import (
@@ -12,9 +11,6 @@ import (
 
 	"github.com/matthewhartstonge/argon2"
 )
-
-// KeyLen is the encryption key length
-const KeyLen = 32
 
 // EncodedSHA256 returns the encoded (base16) sha256sums
 func EncodedSHA256(s string) string {
