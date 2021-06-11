@@ -8,24 +8,39 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/grokloc/grokloc-go/pkg/env"
 	"github.com/grokloc/grokloc-go/pkg/models"
 	"github.com/grokloc/grokloc-go/pkg/models/org"
+	"github.com/grokloc/grokloc-go/pkg/schemas"
 	"github.com/grokloc/grokloc-go/pkg/security"
-	"github.com/grokloc/grokloc-go/pkg/state"
+	"github.com/matthewhartstonge/argon2"
+	_ "github.com/mattn/go-sqlite3" //
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
 )
 
+// UserSuite cannot user a state unit instance as it will create
+// an import cycle, so the relevant fields are just instantiated
+// directly
 type UserSuite struct {
 	suite.Suite
-	ST  *state.Instance
+	DB  *sql.DB
+	Key []byte
 	Org *org.Instance
 }
 
 func (suite *UserSuite) SetupTest() {
 	var err error
-	suite.ST, err = state.New(env.Unit)
+	suite.DB, err = sql.Open("sqlite3", "file::memory:?mode=memory&cache=shared")
+	if err != nil {
+		log.Fatal(err)
+	}
+	// avoid concurrency bug with the sqlite library
+	suite.DB.SetMaxOpenConns(1)
+	_, err = suite.DB.Exec(schemas.AppCreate)
+	if err != nil {
+		log.Fatal(err)
+	}
+	suite.Key, err = security.MakeKey(uuid.NewString())
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,60 +49,60 @@ func (suite *UserSuite) SetupTest() {
 		log.Fatal(err)
 	}
 	suite.Org.Meta.Status = models.StatusActive
-	err = suite.Org.Insert(context.Background(), suite.ST.Master)
+	err = suite.Org.Insert(context.Background(), suite.DB)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
 func (suite *UserSuite) TestInsertUser() {
-	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	password, err := security.DerivePassword(uuid.NewString(), argon2.DefaultConfig())
 	require.Nil(suite.T(), err)
 
 	// org not there
 	u, err := New(uuid.NewString(), uuid.NewString(), uuid.NewString(), password)
 	require.Nil(suite.T(), err)
-	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	err = u.Insert(context.Background(), suite.DB, suite.Key)
 	require.Error(suite.T(), err)
 
 	// org there but not active
 	o, err := org.New(uuid.NewString())
 	require.Nil(suite.T(), err)
 	o.Meta.Status = models.StatusInactive
-	err = o.Insert(context.Background(), suite.ST.Master)
+	err = o.Insert(context.Background(), suite.DB)
 	require.Nil(suite.T(), err)
 
 	u, err = New(uuid.NewString(), uuid.NewString(), o.ID, password)
 	require.Nil(suite.T(), err)
-	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	err = u.Insert(context.Background(), suite.DB, suite.Key)
 	require.Error(suite.T(), err)
 
 	// org there and active
 	u, err = New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
-	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	err = u.Insert(context.Background(), suite.DB, suite.Key)
 	require.Nil(suite.T(), err)
 
 	// duplicate
-	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	err = u.Insert(context.Background(), suite.DB, suite.Key)
 	require.Error(suite.T(), err)
 	require.Equal(suite.T(), models.ErrConflict, err)
 }
 
 func (suite *UserSuite) TestReadUser() {
 	// not found
-	_, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, uuid.NewString())
+	_, err := Read(context.Background(), suite.DB, suite.Key, uuid.NewString())
 	require.Error(suite.T(), err)
 	require.Equal(suite.T(), sql.ErrNoRows, err)
 
-	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	password, err := security.DerivePassword(uuid.NewString(), argon2.DefaultConfig())
 	require.Nil(suite.T(), err)
 	u, err := New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
-	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	err = u.Insert(context.Background(), suite.DB, suite.Key)
 	require.Nil(suite.T(), err)
 
-	uRead, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	uRead, err := Read(context.Background(), suite.DB, suite.Key, u.ID)
 	require.Nil(suite.T(), err)
 	require.Equal(suite.T(), u.ID, uRead.ID)
 	require.Equal(suite.T(), u.APISecret, uRead.APISecret)
@@ -103,101 +118,101 @@ func (suite *UserSuite) TestReadUser() {
 }
 
 func (suite *UserSuite) TestUpdateUserDisplayName() {
-	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	password, err := security.DerivePassword(uuid.NewString(), argon2.DefaultConfig())
 	require.Nil(suite.T(), err)
 	u, err := New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
 
 	// not yet inserted
-	err = u.UpdateDisplayName(context.Background(), suite.ST.Master, suite.ST.Key, uuid.NewString())
+	err = u.UpdateDisplayName(context.Background(), suite.DB, suite.Key, uuid.NewString())
 	require.Error(suite.T(), err)
 	require.Equal(suite.T(), sql.ErrNoRows, err)
 
 	// fix that
-	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	err = u.Insert(context.Background(), suite.DB, suite.Key)
 	require.Nil(suite.T(), err)
 
 	// read in current state
-	uRead, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	uRead, err := Read(context.Background(), suite.DB, suite.Key, u.ID)
 	require.Nil(suite.T(), err)
 	require.Equal(suite.T(), u.DisplayName, uRead.DisplayName)
 	require.Equal(suite.T(), u.DisplayNameDigest, uRead.DisplayNameDigest)
 
 	// update again
 	displayName := uuid.NewString()
-	err = u.UpdateDisplayName(context.Background(), suite.ST.Master, suite.ST.Key, displayName)
+	err = u.UpdateDisplayName(context.Background(), suite.DB, suite.Key, displayName)
 	require.Nil(suite.T(), err)
 
 	// re-read to be sure, check changed status
-	uRead, err = Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	uRead, err = Read(context.Background(), suite.DB, suite.Key, u.ID)
 	require.Nil(suite.T(), err)
 	require.Equal(suite.T(), displayName, uRead.DisplayName)
 	require.Equal(suite.T(), security.EncodedSHA256(displayName), uRead.DisplayNameDigest)
 }
 
 func (suite *UserSuite) TestUpdateUserPassword() {
-	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	password, err := security.DerivePassword(uuid.NewString(), argon2.DefaultConfig())
 	require.Nil(suite.T(), err)
 	u, err := New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
 
 	// not yet inserted
-	err = u.UpdatePassword(context.Background(), suite.ST.Master, uuid.NewString())
+	err = u.UpdatePassword(context.Background(), suite.DB, uuid.NewString())
 	require.Error(suite.T(), err)
 	require.Equal(suite.T(), sql.ErrNoRows, err)
 
 	// fix that
-	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	err = u.Insert(context.Background(), suite.DB, suite.Key)
 	require.Nil(suite.T(), err)
 
 	// read in current state
-	uRead, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	uRead, err := Read(context.Background(), suite.DB, suite.Key, u.ID)
 	require.Nil(suite.T(), err)
 	require.Equal(suite.T(), u.Password, uRead.Password)
 
 	// update again
-	password, err = security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	password, err = security.DerivePassword(uuid.NewString(), argon2.DefaultConfig())
 	require.Nil(suite.T(), err)
-	err = u.UpdatePassword(context.Background(), suite.ST.Master, password)
+	err = u.UpdatePassword(context.Background(), suite.DB, password)
 	require.Nil(suite.T(), err)
 
 	// re-read to be sure, check changed status
-	uRead, err = Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	uRead, err = Read(context.Background(), suite.DB, suite.Key, u.ID)
 	require.Nil(suite.T(), err)
 	require.Equal(suite.T(), password, uRead.Password)
 }
 
 func (suite *UserSuite) TestUpdateUserStatus() {
-	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
+	password, err := security.DerivePassword(uuid.NewString(), argon2.DefaultConfig())
 	require.Nil(suite.T(), err)
 	u, err := New(uuid.NewString(), uuid.NewString(), suite.Org.ID, password)
 	require.Nil(suite.T(), err)
 
 	// not yet inserted
-	err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusActive)
+	err = u.UpdateStatus(context.Background(), suite.DB, models.StatusActive)
 	require.Error(suite.T(), err)
 	require.Equal(suite.T(), sql.ErrNoRows, err)
 
 	// fix that
-	err = u.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
+	err = u.Insert(context.Background(), suite.DB, suite.Key)
 	require.Nil(suite.T(), err)
 
 	// demonstrate that the status is not active
-	uRead, err := Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	uRead, err := Read(context.Background(), suite.DB, suite.Key, u.ID)
 	require.Nil(suite.T(), err)
 	require.Equal(suite.T(), models.StatusUnconfirmed, uRead.Meta.Status)
 
 	// update again
-	err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusActive)
+	err = u.UpdateStatus(context.Background(), suite.DB, models.StatusActive)
 	require.Nil(suite.T(), err)
 
 	// re-read to be sure, check changed status
-	uRead, err = Read(context.Background(), suite.ST.RandomReplica(), suite.ST.Key, u.ID)
+	uRead, err = Read(context.Background(), suite.DB, suite.Key, u.ID)
 	require.Nil(suite.T(), err)
 	require.Equal(suite.T(), models.StatusActive, uRead.Meta.Status)
 
 	// None not allowed
-	err = u.UpdateStatus(context.Background(), suite.ST.Master, models.StatusNone)
+	err = u.UpdateStatus(context.Background(), suite.DB, models.StatusNone)
 	require.Error(suite.T(), err)
 }
 

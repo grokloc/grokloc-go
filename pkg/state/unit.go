@@ -2,6 +2,7 @@
 package state
 
 import (
+	"context"
 	"database/sql"
 	"log"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/grokloc/grokloc-go/pkg/env"
 	"github.com/grokloc/grokloc-go/pkg/schemas"
 	"github.com/grokloc/grokloc-go/pkg/security"
+	"github.com/grokloc/grokloc-go/pkg/util"
 )
 
 // unitInstance builds an instance for the Unit environment
@@ -39,13 +41,20 @@ func unitInstance() *Instance {
 	if err != nil {
 		log.Fatal(err)
 	}
+	rootOrg, rootUser, err := util.NewOrgOwner(context.Background(), db, key)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return &Instance{
-		Level:      env.Unit,
-		Master:     db,
-		Replicas:   []*sql.DB{db},
-		Key:        key,
-		SigningKey: signingKey,
-		Argon2Cfg:  argon2.DefaultConfig(),
-		L:          logger,
+		Level:             env.Unit,
+		Master:            db,
+		Replicas:          []*sql.DB{db},
+		Key:               key,
+		SigningKey:        signingKey,
+		Argon2Cfg:         argon2.DefaultConfig(),
+		RootOrg:           rootOrg.ID,
+		RootUser:          rootUser.ID,
+		RootUserAPISecret: rootUser.APISecret,
+		L:                 logger,
 	}
 }
