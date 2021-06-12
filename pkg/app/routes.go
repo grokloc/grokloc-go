@@ -26,7 +26,7 @@ const (
 )
 
 // Router provides API route handlers
-func (srv Instance) Router() *chi.Mux {
+func (srv *Instance) Router() *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.RealIP)

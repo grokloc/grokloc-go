@@ -12,7 +12,7 @@ import (
 const Version = "v0"
 
 // API headers
-// TokenRequest is formatted as hex-encode(id+api-secret)
+// TokenRequest is formatted as security.EncodedSHA256(id+api-secret)
 const (
 	IDHeader           = "X-GrokLOC-ID"
 	TokenHeader        = "X-GrokLOC-Token"
