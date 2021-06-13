@@ -10,14 +10,13 @@ import (
 
 // path/route constants
 const (
-	APIPath    = "/api"
-	APIRoute   = APIPath + "/" + Version
-	TokenRoute = APIRoute + "/token"
+	APIPath    = "/api/" + Version
+	TokenRoute = APIPath + "/token"
 
 	OkPath      = "/ok"
-	OkRoute     = APIRoute + OkPath
+	OkRoute     = APIPath + OkPath
 	StatusPath  = "/status"
-	StatusRoute = APIRoute + StatusPath // like ping, but requires auth
+	StatusRoute = APIPath + StatusPath // auth + Ok
 )
 
 // URL parameter names
@@ -35,6 +34,17 @@ func (srv *Instance) Router() *chi.Mux {
 	r.Use(middleware.Timeout(5 * time.Second))
 
 	r.Get(OkRoute, Ok)
+
+	r.Route(TokenRoute, func(r chi.Router) {
+		r.Use(srv.GetUserAndOrg)
+		r.Put("/", srv.NewToken)
+	})
+
+	r.Route(APIPath, func(r chi.Router) {
+		r.Use(srv.GetUserAndOrg)
+		r.Use(srv.VerifyToken)
+		r.Get(StatusPath, Ok)
+	})
 
 	return r
 }

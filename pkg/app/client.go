@@ -1,8 +1,14 @@
 package app
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
+	"time"
+
+	"github.com/grokloc/grokloc-go/pkg/security"
 )
 
 // Client is an app client
@@ -11,7 +17,7 @@ type Client struct {
 	ID        string
 	APISecret string
 	h         *http.Client
-	Token     *Token
+	token     *Token
 }
 
 // NewClient returns a new Client instance
@@ -24,12 +30,44 @@ func NewClient(host, id, apiSecret string) (*Client, error) {
 	}, nil
 }
 
-// Ok calls the /ok endpoint
-func (c *Client) Ok() (*http.Response, []byte, error) {
-	req, err := http.NewRequest(http.MethodGet, c.Host+OkRoute, nil)
+// getToken retrieves the jwt for the calling user
+func (c *Client) getToken() error {
+	req, err := http.NewRequest(http.MethodPut, c.Host+TokenRoute, nil)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
+	req.Header.Add(IDHeader, c.ID)
+	req.Header.Add(TokenRequestHeader, security.EncodedSHA256(c.ID+c.APISecret))
+	resp, body, err := c.makeRequest(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("token response code: %d", resp.StatusCode)
+	}
+	if body == nil {
+		return errors.New("token response body should be non-nil")
+	}
+	token := Token{}
+	err = json.Unmarshal(body, &token)
+	if err != nil {
+		return err
+	}
+	c.token = &token
+	return nil
+}
+
+// authedRequest will refresh the token for a regular user instance if it is nil
+// or set to expire in 30 seconds
+func (c *Client) authedRequest(req *http.Request) (*http.Response, []byte, error) {
+	if c.token == nil || (c.token.Expires+30) > time.Now().Unix() {
+		err := c.getToken()
+		if err != nil {
+			return nil, nil, err
+		}
+	}
+	req.Header.Add(IDHeader, c.ID)
+	req.Header.Add(TokenHeader, c.token.Bearer)
 	return c.makeRequest(req)
 }
 
@@ -45,4 +83,22 @@ func (c *Client) makeRequest(req *http.Request) (*http.Response, []byte, error) 
 	}
 	defer resp.Body.Close()
 	return resp, respBody, nil
+}
+
+// Ok calls the /ok endpoint
+func (c *Client) Ok() (*http.Response, []byte, error) {
+	req, err := http.NewRequest(http.MethodGet, c.Host+OkRoute, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.makeRequest(req)
+}
+
+// Status calls the /status endpoint
+func (c *Client) Status() (*http.Response, []byte, error) {
+	req, err := http.NewRequest(http.MethodGet, c.Host+StatusRoute, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
 }
