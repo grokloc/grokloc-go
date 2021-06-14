@@ -20,30 +20,30 @@ type ClientSuite struct {
 	ts  *httptest.Server
 }
 
-func (suite *ClientSuite) SetupTest() {
+func (s *ClientSuite) SetupTest() {
 	var err error
-	suite.srv, err = app.New(env.Unit)
+	s.srv, err = app.New(env.Unit)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	suite.ctx = context.Background()
-	suite.ts = httptest.NewServer(suite.srv.Router())
+	s.ctx = context.Background()
+	s.ts = httptest.NewServer(s.srv.Router())
 }
 
-func (suite *ClientSuite) TestOk() {
-	c, err := NewClient(suite.ts.URL, suite.srv.ST.RootUser, suite.srv.ST.RootUserAPISecret)
-	require.Nil(suite.T(), err)
+func (s *ClientSuite) TestOk() {
+	c, err := NewClient(s.ts.URL, s.srv.ST.RootUser, s.srv.ST.RootUserAPISecret)
+	require.Nil(s.T(), err)
 	resp, _, err := c.Ok()
-	require.Nil(suite.T(), err)
-	require.Equal(suite.T(), http.StatusOK, resp.StatusCode)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
 }
 
-func (suite *ClientSuite) TestStatus() {
-	c, err := NewClient(suite.ts.URL, suite.srv.ST.RootUser, suite.srv.ST.RootUserAPISecret)
-	require.Nil(suite.T(), err)
+func (s *ClientSuite) TestStatus() {
+	c, err := NewClient(s.ts.URL, s.srv.ST.RootUser, s.srv.ST.RootUserAPISecret)
+	require.Nil(s.T(), err)
 	resp, _, err := c.Status()
-	require.Nil(suite.T(), err)
-	require.Equal(suite.T(), http.StatusOK, resp.StatusCode)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
 }
 
 func TestClientSuite(t *testing.T) {

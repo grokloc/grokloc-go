@@ -11,11 +11,11 @@ type SafeSuite struct {
 	suite.Suite
 }
 
-func (suite *SafeSuite) TestSafeStr() {
-	require.False(suite.T(), SafeStr(""))
-	require.False(suite.T(), SafeStr("hello'"))
-	require.False(suite.T(), SafeStr("hello`"))
-	require.True(suite.T(), SafeStr("hello"))
+func (s *SafeSuite) TestSafeStr() {
+	require.False(s.T(), SafeStr(""))
+	require.False(s.T(), SafeStr("hello'"))
+	require.False(s.T(), SafeStr("hello`"))
+	require.True(s.T(), SafeStr("hello"))
 }
 
 func TestSafeSuite(t *testing.T) {

@@ -11,14 +11,14 @@ type EnvSuite struct {
 	suite.Suite
 }
 
-func (suite *EnvSuite) TestEnv() {
+func (s *EnvSuite) TestEnv() {
 	var err error
 	var level Level
 	_, err = NewLevel("")
-	require.Error(suite.T(), err)
+	require.Error(s.T(), err)
 	level, err = NewLevel("UNIT")
-	require.Nil(suite.T(), err)
-	require.Equal(suite.T(), Unit, level)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), Unit, level)
 }
 
 func TestEnvSuite(t *testing.T) {

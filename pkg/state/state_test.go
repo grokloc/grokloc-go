@@ -12,9 +12,9 @@ type StateSuite struct {
 	suite.Suite
 }
 
-func (suite *StateSuite) TestUnit() {
+func (s *StateSuite) TestUnit() {
 	_, err := New(env.Unit)
-	require.Nil(suite.T(), err)
+	require.Nil(s.T(), err)
 }
 
 func TestStateSuite(t *testing.T) {

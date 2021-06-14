@@ -22,49 +22,49 @@ type JWTSuite struct {
 	ST *state.Instance
 }
 
-func (suite *JWTSuite) SetupTest() {
+func (s *JWTSuite) SetupTest() {
 	var err error
-	suite.ST, err = state.New(env.Unit)
+	s.ST, err = state.New(env.Unit)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func (suite *JWTSuite) TestJWT() {
+func (s *JWTSuite) TestJWT() {
 	// make a new org and user as owner
-	o, u, err := util.NewOrgOwner(context.Background(), suite.ST.Master, suite.ST.Key)
-	require.Nil(suite.T(), err)
+	o, u, err := util.NewOrgOwner(context.Background(), s.ST.Master, s.ST.Key)
+	require.Nil(s.T(), err)
 
 	claims, err := New(*u)
-	require.Nil(suite.T(), err)
+	require.Nil(s.T(), err)
 	token := jwt_go.NewWithClaims(jwt_go.SigningMethodHS256, claims)
-	signedToken, err := token.SignedString([]byte(u.ID + string(suite.ST.SigningKey)))
-	require.Nil(suite.T(), err)
-	claimsDecoded, err := Decode(u.ID, signedToken, suite.ST.SigningKey)
-	require.Nil(suite.T(), err)
-	require.Equal(suite.T(), u.ID, claimsDecoded.Id)
-	require.Equal(suite.T(), u.Org, claimsDecoded.Org)
+	signedToken, err := token.SignedString([]byte(u.ID + string(s.ST.SigningKey)))
+	require.Nil(s.T(), err)
+	claimsDecoded, err := Decode(u.ID, signedToken, s.ST.SigningKey)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), u.ID, claimsDecoded.Id)
+	require.Equal(s.T(), u.Org, claimsDecoded.Org)
 
 	// wrong user
-	password, err := security.DerivePassword(uuid.NewString(), suite.ST.Argon2Cfg)
-	require.Nil(suite.T(), err)
+	password, err := security.DerivePassword(uuid.NewString(), s.ST.Argon2Cfg)
+	require.Nil(s.T(), err)
 	uOther, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, password)
-	require.Nil(suite.T(), err)
+	require.Nil(s.T(), err)
 	u.Meta.Status = models.StatusActive
-	err = uOther.Insert(context.Background(), suite.ST.Master, suite.ST.Key)
-	require.Nil(suite.T(), err)
-	_, err = Decode(uOther.ID, signedToken, suite.ST.SigningKey)
-	require.Error(suite.T(), err)
+	err = uOther.Insert(context.Background(), s.ST.Master, s.ST.Key)
+	require.Nil(s.T(), err)
+	_, err = Decode(uOther.ID, signedToken, s.ST.SigningKey)
+	require.Error(s.T(), err)
 
 	// bad JWT
-	_, err = Decode(u.ID, uuid.NewString(), suite.ST.SigningKey)
-	require.Error(suite.T(), err)
+	_, err = Decode(u.ID, uuid.NewString(), s.ST.SigningKey)
+	require.Error(s.T(), err)
 
 	// bad signing key
 	otherSigningKey, err := security.MakeKey(uuid.NewString())
-	require.Nil(suite.T(), err)
+	require.Nil(s.T(), err)
 	_, err = Decode(u.ID, signedToken, otherSigningKey)
-	require.Error(suite.T(), err)
+	require.Error(s.T(), err)
 }
 
 func TestJWTSuite(t *testing.T) {
