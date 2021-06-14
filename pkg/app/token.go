@@ -34,15 +34,7 @@ func (srv *Instance) NewToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("missing: %s", TokenRequestHeader), http.StatusBadRequest)
 		return
 	}
-	apiSecret, err := security.Decrypt(session.User.APISecret, srv.ST.Key)
-	if err != nil {
-		sugar.Debugw("decrypt api secret",
-			"reqid", middleware.GetReqID(ctx),
-			"err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	if tokenRequest != security.EncodedSHA256(session.User.ID+apiSecret) {
+	if tokenRequest != security.EncodedSHA256(session.User.ID+session.User.APISecret) {
 		sugar.Debugw("verify token request",
 			"reqid", middleware.GetReqID(ctx),
 			"tokenrequest", tokenRequest,

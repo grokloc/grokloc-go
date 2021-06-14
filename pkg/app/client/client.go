@@ -1,4 +1,5 @@
-package app
+// Package client is an app client library
+package client
 
 import (
 	"encoding/json"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/grokloc/grokloc-go/pkg/app"
 	"github.com/grokloc/grokloc-go/pkg/security"
 )
 
@@ -17,7 +19,7 @@ type Client struct {
 	ID        string
 	APISecret string
 	h         *http.Client
-	token     *Token
+	token     *app.Token
 }
 
 // NewClient returns a new Client instance
@@ -32,12 +34,12 @@ func NewClient(host, id, apiSecret string) (*Client, error) {
 
 // getToken retrieves the jwt for the calling user
 func (c *Client) getToken() error {
-	req, err := http.NewRequest(http.MethodPut, c.Host+TokenRoute, nil)
+	req, err := http.NewRequest(http.MethodPut, c.Host+app.TokenRoute, nil)
 	if err != nil {
 		return err
 	}
-	req.Header.Add(IDHeader, c.ID)
-	req.Header.Add(TokenRequestHeader, security.EncodedSHA256(c.ID+c.APISecret))
+	req.Header.Add(app.IDHeader, c.ID)
+	req.Header.Add(app.TokenRequestHeader, security.EncodedSHA256(c.ID+c.APISecret))
 	resp, body, err := c.makeRequest(req)
 	if err != nil {
 		return err
@@ -48,7 +50,7 @@ func (c *Client) getToken() error {
 	if body == nil {
 		return errors.New("token response body should be non-nil")
 	}
-	token := Token{}
+	token := app.Token{}
 	err = json.Unmarshal(body, &token)
 	if err != nil {
 		return err
@@ -66,8 +68,8 @@ func (c *Client) authedRequest(req *http.Request) (*http.Response, []byte, error
 			return nil, nil, err
 		}
 	}
-	req.Header.Add(IDHeader, c.ID)
-	req.Header.Add(TokenHeader, c.token.Bearer)
+	req.Header.Add(app.IDHeader, c.ID)
+	req.Header.Add(app.TokenHeader, c.token.Bearer)
 	return c.makeRequest(req)
 }
 
@@ -87,7 +89,7 @@ func (c *Client) makeRequest(req *http.Request) (*http.Response, []byte, error) 
 
 // Ok calls the /ok endpoint
 func (c *Client) Ok() (*http.Response, []byte, error) {
-	req, err := http.NewRequest(http.MethodGet, c.Host+OkRoute, nil)
+	req, err := http.NewRequest(http.MethodGet, c.Host+app.OkRoute, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -96,7 +98,7 @@ func (c *Client) Ok() (*http.Response, []byte, error) {
 
 // Status calls the /status endpoint
 func (c *Client) Status() (*http.Response, []byte, error) {
-	req, err := http.NewRequest(http.MethodGet, c.Host+StatusRoute, nil)
+	req, err := http.NewRequest(http.MethodGet, c.Host+app.StatusRoute, nil)
 	if err != nil {
 		return nil, nil, err
 	}

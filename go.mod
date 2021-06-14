@@ -4,6 +4,7 @@ go 1.16
 
 replace (
 	github.com/grokloc/grokloc-go/pkg/app => ./pkg/app
+	github.com/grokloc/grokloc-go/pkg/app/client => ./pkg/app/client
 	github.com/grokloc/grokloc-go/pkg/env => ./pkg/env
 	github.com/grokloc/grokloc-go/pkg/jwt => ./pkg/jwt
 	github.com/grokloc/grokloc-go/pkg/models => ./pkg/models
