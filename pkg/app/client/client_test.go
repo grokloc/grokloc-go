@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
+// ClientSuite tests will act as implicit tests for all public app endpoints
 type ClientSuite struct {
 	suite.Suite
 	srv *app.Instance
