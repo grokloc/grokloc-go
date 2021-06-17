@@ -72,14 +72,14 @@ func (srv *Instance) GetUserAndOrg(next http.Handler) http.Handler {
 		session := &Session{Org: *org, User: *user}
 
 		authLevel := AuthUser
-		if session.Org.Owner == session.User.ID {
-			authLevel = AuthOrg
-		} else if session.User.ID == srv.ST.RootUser &&
+		if session.User.ID == srv.ST.RootUser &&
 			session.Org.ID == srv.ST.RootOrg {
 			authLevel = AuthRoot
+		} else if session.Org.Owner == session.User.ID {
+			authLevel = AuthOrg
 		}
 		r = r.WithContext(context.WithValue(ctx, authLevelCtxKey, authLevel))
-		// Note r.Context() to get ctx with authLevel.
+		// r.Context() to get ctx with authLevel
 		r = r.WithContext(context.WithValue(r.Context(), sessionCtxKey, *session))
 		next.ServeHTTP(w, r)
 	}
