@@ -37,23 +37,39 @@ func (s *SessionSuite) SetupTest() {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
+
+	// returns the auth leve in a header, and "OK" as a body
+	okHandler := func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		lvl, ok := ctx.Value(authLevelCtxKey).(int)
+		if !ok {
+			http.Error(w, "authLevel", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("content-type", "text/plain; charset=utf-8")
+		// tests can read out the auth level
+		w.Header().Set(authLevel, fmt.Sprintf("%d", lvl))
+		_, err := w.Write([]byte("OK"))
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+
 	rtr := chi.NewRouter()
 	rtr.Route("/", func(rtr chi.Router) {
 		rtr.Use(s.srv.GetUserAndOrg)
-		rtr.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-			lvl, ok := ctx.Value(authLevelCtxKey).(int)
-			if !ok {
-				http.Error(w, "authLevel", http.StatusInternalServerError)
-				return
-			}
-			w.Header().Set("content-type", "text/plain; charset=utf-8")
-			// tests can read out the auth level
-			w.Header().Set(authLevel, fmt.Sprintf("%d", lvl))
-			_, err := w.Write([]byte("OK"))
-			if err != nil {
-				panic(err.Error())
-			}
+
+		// OK handler that only wants a valid user/org
+		rtr.Get("/", okHandler)
+
+		// "/token" runs the token generation handler
+		rtr.Put("/token", s.srv.NewToken)
+
+		rtr.Route("/verify", func(rtr chi.Router) {
+			rtr.Use(s.srv.VerifyToken)
+
+			// OK handler that also wants a valid token header
+			rtr.Get("/", okHandler)
 		})
 	})
 	s.ctx = context.Background()

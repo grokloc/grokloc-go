@@ -56,7 +56,7 @@ func (srv *Instance) NewToken(w http.ResponseWriter, r *http.Request) {
 		sugar.Debugw("encode token",
 			"reqid", middleware.GetReqID(ctx),
 			"err", err)
-		http.Error(w, "internal error.", http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -66,7 +66,7 @@ func (srv *Instance) NewToken(w http.ResponseWriter, r *http.Request) {
 		sugar.Debugw("marshal token",
 			"reqid", middleware.GetReqID(ctx),
 			"err", err)
-		http.Error(w, "internal error.", http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	_, err = w.Write(json)
