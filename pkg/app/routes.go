@@ -15,6 +15,8 @@ const (
 
 	OkPath      = "/ok"
 	OkRoute     = APIPath + OkPath
+	OrgPath     = "/org"
+	OrgRoute    = APIPath + OrgPath
 	StatusPath  = "/status"
 	StatusRoute = APIPath + StatusPath // auth + Ok
 )
