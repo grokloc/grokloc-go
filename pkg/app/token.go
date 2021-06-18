@@ -34,10 +34,12 @@ func (srv *Instance) NewToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("missing: %s", TokenRequestHeader), http.StatusBadRequest)
 		return
 	}
-	if tokenRequest != security.EncodedSHA256(session.User.ID+session.User.APISecret) {
+	validate := security.EncodedSHA256(session.User.ID + session.User.APISecret)
+	if tokenRequest != validate {
 		sugar.Debugw("verify token request",
 			"reqid", middleware.GetReqID(ctx),
 			"tokenrequest", tokenRequest,
+			"validate", validate,
 			"id", session.User.ID)
 		http.Error(w, "token request invalid", http.StatusUnauthorized)
 		return

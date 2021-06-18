@@ -48,6 +48,12 @@ func (srv *Instance) Router() *chi.Mux {
 		r.Get(StatusPath, Ok)
 	})
 
+	r.Route(OrgRoute, func(r chi.Router) {
+		r.Use(srv.GetUserAndOrg)
+		r.Use(srv.VerifyToken)
+		r.Post("/", srv.CreateOrg)
+	})
+
 	return r
 }
 

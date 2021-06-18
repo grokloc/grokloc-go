@@ -42,6 +42,7 @@ func (srv Instance) CreateOrg(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
+
 	var c CreateMsg
 	err = json.Unmarshal(body, &c)
 	if err != nil {
