@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -52,6 +53,7 @@ func (srv *Instance) Router() *chi.Mux {
 		r.Use(srv.GetUserAndOrg)
 		r.Use(srv.VerifyToken)
 		r.Post("/", srv.CreateOrg)
+		r.Get(fmt.Sprintf("/{%s}", IDParam), srv.ReadOrg)
 	})
 
 	return r

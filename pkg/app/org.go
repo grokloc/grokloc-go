@@ -1,10 +1,12 @@
 package app
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/grokloc/grokloc-go/pkg/models"
 	"github.com/grokloc/grokloc-go/pkg/models/org"
@@ -15,7 +17,7 @@ type CreateMsg struct {
 	Name string `json:"name"`
 }
 
-// CreateOrg creates a new org based on seed data in the POST body.
+// CreateOrg creates a new org based on seed data in the POST body
 func (srv Instance) CreateOrg(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	defer srv.ST.L.Sync() // nolint
@@ -70,4 +72,68 @@ func (srv Instance) CreateOrg(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("location", OrgRoute+"/"+o.ID)
 	w.WriteHeader(http.StatusCreated)
+}
+
+// ReadOrg reads an organization
+func (srv Instance) ReadOrg(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	defer srv.ST.L.Sync() // nolint
+	sugar := srv.ST.L.Sugar()
+
+	id := chi.URLParam(r, IDParam)
+	if len(id) == 0 {
+		sugar.Debugw("context id param missing",
+			"reqid", middleware.GetReqID(ctx))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	authLevel, ok := ctx.Value(authLevelCtxKey).(int)
+	if !ok {
+		sugar.Debugw("context authlevel missing",
+			"reqid", middleware.GetReqID(ctx))
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	if authLevel != AuthRoot {
+		session, ok := ctx.Value(sessionCtxKey).(Session)
+		if !ok {
+			sugar.Debugw("context session missing",
+				"reqid", middleware.GetReqID(ctx))
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		// root may read any org; otherwise, calling user must be in org
+		if session.User.Org != id {
+			http.Error(w, "auth inadequate", http.StatusForbidden)
+			return
+		}
+	}
+
+	o, err := org.Read(ctx, srv.ST.RandomReplica(), id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "org not found or inactive", http.StatusNotFound)
+			return
+		}
+		sugar.Debugw("read org",
+			"reqid", middleware.GetReqID(ctx),
+			"err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	bs, err := json.Marshal(o)
+	if err != nil {
+		sugar.Debugw("marshal org",
+			"reqid", middleware.GetReqID(ctx),
+			"err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	_, err = w.Write(bs)
+	if err != nil {
+		panic(err.Error())
+	}
 }

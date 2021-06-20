@@ -62,8 +62,7 @@ func (srv *Instance) NewToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("content-type", "application/json")
-	json, err := json.Marshal(Token{Bearer: signedToken, Expires: claims.ExpiresAt})
+	bs, err := json.Marshal(Token{Bearer: signedToken, Expires: claims.ExpiresAt})
 	if err != nil {
 		sugar.Debugw("marshal token",
 			"reqid", middleware.GetReqID(ctx),
@@ -71,7 +70,8 @@ func (srv *Instance) NewToken(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
-	_, err = w.Write(json)
+	w.Header().Set("content-type", "application/json")
+	_, err = w.Write(bs)
 	if err != nil {
 		panic(err.Error())
 	}

@@ -28,7 +28,7 @@ type Instance struct {
 	Email             string `json:"email"`
 	EmailDigest       string `json:"email_digest"`
 	Org               string `json:"org"`
-	Password          string `json:"password"`
+	Password          string `json:"-"` // don't serialize password
 }
 
 // New creates a new user that hasn't been created before
