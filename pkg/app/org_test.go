@@ -191,6 +191,16 @@ func (s *OrgSuite) TestReadOtherOrg() {
 	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
 }
 
+func (s *OrgSuite) TestReadOrgNotFound() {
+	req, err := http.NewRequest(http.MethodGet, s.ts.URL+OrgRoute+"/"+uuid.NewString(), nil)
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, s.srv.ST.RootUser)
+	req.Header.Add(TokenHeader, s.token.Bearer)
+	resp, err := s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
+}
+
 func TestOrgSuite(t *testing.T) {
 	suite.Run(t, new(OrgSuite))
 }
