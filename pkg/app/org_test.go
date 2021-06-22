@@ -66,7 +66,7 @@ func (s *OrgSuite) SetupTest() {
 }
 
 func (s *OrgSuite) TestCreateOrg() {
-	bs, err := json.Marshal(CreateMsg{Name: uuid.NewString()})
+	bs, err := json.Marshal(CreateOrgMsg{Name: uuid.NewString()})
 	require.Nil(s.T(), err)
 	req, err := http.NewRequest(http.MethodPost, s.ts.URL+OrgRoute, bytes.NewBuffer(bs))
 	require.Nil(s.T(), err)
@@ -109,7 +109,7 @@ func (s *OrgSuite) TestCreateOrgNotRoot() {
 	err = json.Unmarshal(respBody, &tok)
 	require.Nil(s.T(), err)
 
-	bs, err := json.Marshal(CreateMsg{Name: uuid.NewString()})
+	bs, err := json.Marshal(CreateOrgMsg{Name: uuid.NewString()})
 	require.Nil(s.T(), err)
 	req, err = http.NewRequest(http.MethodPost, s.ts.URL+OrgRoute, bytes.NewBuffer(bs))
 	require.Nil(s.T(), err)
