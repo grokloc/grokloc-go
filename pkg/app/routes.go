@@ -54,6 +54,7 @@ func (srv *Instance) Router() *chi.Mux {
 		r.Use(srv.VerifyToken)
 		r.Post("/", srv.CreateOrg)
 		r.Get(fmt.Sprintf("/{%s}", IDParam), srv.ReadOrg)
+		r.Put(fmt.Sprintf("/{%s}", IDParam), srv.UpdateOrg)
 	})
 
 	return r

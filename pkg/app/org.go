@@ -144,8 +144,8 @@ func (srv Instance) ReadOrg(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// UpdateOrgOwner sets the org owner
-func (srv Instance) UpdateOrgOwner(w http.ResponseWriter, r *http.Request) {
+// UpdateOrg updates org owner or status
+func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	defer srv.ST.L.Sync() // nolint
 	sugar := srv.ST.L.Sugar()
@@ -171,22 +171,6 @@ func (srv Instance) UpdateOrgOwner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		sugar.Debugw("read body",
-			"reqid", middleware.GetReqID(ctx),
-			"err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	var m UpdateOrgOwnerMsg
-	err = json.Unmarshal(body, &m)
-	if err != nil {
-		http.Error(w, "malformed owner update", http.StatusBadRequest)
-		return
-	}
-
 	o, err := org.Read(ctx, srv.ST.RandomReplica(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -200,49 +184,6 @@ func (srv Instance) UpdateOrgOwner(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = o.UpdateOwner(ctx, srv.ST.Master, m.Owner)
-	if err != nil {
-		if err == models.ErrRelatedUser {
-			http.Error(w, "prospective owner not in org", http.StatusBadRequest)
-			return
-		}
-		sugar.Debugw("update owner",
-			"reqid", middleware.GetReqID(ctx),
-			"err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusNoContent)
-}
-
-// UpdateOrgStatus sets the org status
-func (srv Instance) UpdateOrgStatus(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	defer srv.ST.L.Sync() // nolint
-	sugar := srv.ST.L.Sugar()
-
-	id := chi.URLParam(r, IDParam)
-	if len(id) == 0 {
-		sugar.Debugw("context id param missing",
-			"reqid", middleware.GetReqID(ctx))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-
-	authLevel, ok := ctx.Value(authLevelCtxKey).(int)
-	if !ok {
-		sugar.Debugw("context authlevel missing",
-			"reqid", middleware.GetReqID(ctx))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
-	}
-	// only root can change the org status
-	if authLevel != AuthRoot {
-		http.Error(w, "auth inadequate", http.StatusForbidden)
-		return
-	}
-
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		sugar.Debugw("read body",
@@ -252,38 +193,46 @@ func (srv Instance) UpdateOrgStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var m UpdateStatusMsg
-	err = json.Unmarshal(body, &m)
-	if err != nil {
-		http.Error(w, "malformed status update", http.StatusBadRequest)
-		return
-	}
-
-	o, err := org.Read(ctx, srv.ST.RandomReplica(), id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "org not found or inactive", http.StatusNotFound)
+	// try matching on owner update
+	var ownerMsg UpdateOrgOwnerMsg
+	err = json.Unmarshal(body, &ownerMsg)
+	if err == nil {
+		err := o.UpdateOwner(ctx, srv.ST.Master, ownerMsg.Owner)
+		if err != nil {
+			if err == models.ErrRelatedUser {
+				http.Error(w, "prospective owner not in org", http.StatusBadRequest)
+				return
+			}
+			sugar.Debugw("update owner",
+				"reqid", middleware.GetReqID(ctx),
+				"err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		sugar.Debugw("read org",
-			"reqid", middleware.GetReqID(ctx),
-			"err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	err = o.UpdateStatus(ctx, srv.ST.Master, m.Status)
-	if err != nil {
-		if err == models.ErrDisallowedValue {
-			http.Error(w, "status value disallowed", http.StatusBadRequest)
+	// try matching on status update
+	var statusMsg UpdateStatusMsg
+	err = json.Unmarshal(body, &statusMsg)
+	if err == nil {
+		err := o.UpdateStatus(ctx, srv.ST.Master, statusMsg.Status)
+		if err != nil {
+			if err == models.ErrDisallowedValue {
+				http.Error(w, "status value disallowed", http.StatusBadRequest)
+				return
+			}
+			sugar.Debugw("update owner",
+				"reqid", middleware.GetReqID(ctx),
+				"err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		sugar.Debugw("update owner",
-			"reqid", middleware.GetReqID(ctx),
-			"err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	// no update formats matched
+	http.Error(w, "malformed update", http.StatusBadRequest)
 }
