@@ -31,10 +31,7 @@ func (srv Instance) CreateOrg(w http.ResponseWriter, r *http.Request) {
 
 	authLevel, ok := ctx.Value(authLevelCtxKey).(int)
 	if !ok {
-		sugar.Debugw("context authlevel missing",
-			"reqid", middleware.GetReqID(ctx))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		panic("auth missing")
 	}
 	// only root can create an org
 	if authLevel != AuthRoot {
@@ -88,45 +85,45 @@ func (srv Instance) ReadOrg(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, IDParam)
 	if len(id) == 0 {
-		sugar.Debugw("context id param missing",
-			"reqid", middleware.GetReqID(ctx))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		panic("id missing")
 	}
 
 	authLevel, ok := ctx.Value(authLevelCtxKey).(int)
 	if !ok {
-		sugar.Debugw("context authlevel missing",
-			"reqid", middleware.GetReqID(ctx))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		panic("auth missing")
 	}
-	if authLevel != AuthRoot {
-		session, ok := ctx.Value(sessionCtxKey).(Session)
-		if !ok {
-			sugar.Debugw("context session missing",
-				"reqid", middleware.GetReqID(ctx))
+
+	var o *org.Instance
+	var err error
+
+	// if root is the caller, the context org is the root org,
+	// so read the requested org
+	if authLevel == AuthRoot {
+		o, err = org.Read(ctx, srv.ST.RandomReplica(), id)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "org not found or inactive", http.StatusNotFound)
+				return
+			}
+			sugar.Debugw("read org",
+				"reqid", middleware.GetReqID(ctx),
+				"err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
-		// root may read any org; otherwise, calling user must be in org
-		if session.User.Org != id {
-			http.Error(w, "auth inadequate", http.StatusForbidden)
+	} else {
+		// otherwise, a regular user or org owner
+		// if caller is not root, it can only read its own org
+		// (which is in context)
+		session, ok := ctx.Value(sessionCtxKey).(Session)
+		if !ok {
+			panic("session missing")
+		}
+		if session.Org.ID != id {
+			http.Error(w, "not a member of requested org", http.StatusForbidden)
 			return
 		}
-	}
-
-	o, err := org.Read(ctx, srv.ST.RandomReplica(), id)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			http.Error(w, "org not found or inactive", http.StatusNotFound)
-			return
-		}
-		sugar.Debugw("read org",
-			"reqid", middleware.GetReqID(ctx),
-			"err", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		o = &session.Org
 	}
 
 	bs, err := json.Marshal(o)
@@ -152,18 +149,12 @@ func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 
 	id := chi.URLParam(r, IDParam)
 	if len(id) == 0 {
-		sugar.Debugw("context id param missing",
-			"reqid", middleware.GetReqID(ctx))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		panic("id missing")
 	}
 
 	authLevel, ok := ctx.Value(authLevelCtxKey).(int)
 	if !ok {
-		sugar.Debugw("context authlevel missing",
-			"reqid", middleware.GetReqID(ctx))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		panic("auth missing")
 	}
 	// only root can change the org owner
 	if authLevel != AuthRoot {
@@ -171,6 +162,7 @@ func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// the context org is the root org, so read in the requested org
 	o, err := org.Read(ctx, srv.ST.RandomReplica(), id)
 	if err != nil {
 		if err == sql.ErrNoRows {
