@@ -20,6 +20,9 @@ var ErrRelatedUser error = errors.New("related user is missing, not Active, or i
 // ErrModelMigrate signals a model could not be migrated to a different version
 var ErrModelMigrate error = errors.New("schema version error; cannot migrate model")
 
+// ErrDisallowedValue signals a value of the right type, just not allowed
+var ErrDisallowedValue error = errors.New("value disallowed in this context")
+
 // UniqueConstraint will try to match the db unique constraint violation
 func UniqueConstraint(err error) bool {
 	return strings.Contains(strings.ToLower(err.Error()), "unique")

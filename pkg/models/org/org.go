@@ -127,7 +127,7 @@ func (o *Instance) UpdateOwner(ctx context.Context, db *sql.DB, owner string) er
 // UpdateStatus sets the org status
 func (o *Instance) UpdateStatus(ctx context.Context, db *sql.DB, status models.Status) error {
 	if status == models.StatusNone {
-		return errors.New("cannot use None as a stored status")
+		return models.ErrDisallowedValue
 	}
 	return models.Update(ctx, db, schemas.OrgsTableName, o.ID, "status", status)
 }
