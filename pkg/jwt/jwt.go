@@ -54,8 +54,6 @@ func FromHeaderVal(s string) string {
 
 // Decode returns the claims from a signed string jwt
 func Decode(id, token string, signingKey []byte) (*Claims, error) {
-	// token may come in as '$TokenType $val' if from a web context
-
 	f := func(token *jwt_go.Token) (interface{}, error) {
 		return []byte(id + string(signingKey)), nil
 	}

@@ -99,7 +99,7 @@ func (srv Instance) WithToken(next http.Handler) http.Handler {
 		if !ok {
 			panic("session missing")
 		}
-		token := r.Header.Get(jwt.Authorization)
+		token := jwt.FromHeaderVal(r.Header.Get(jwt.Authorization))
 		if len(token) == 0 {
 			http.Error(w, fmt.Sprintf("missing: %s", jwt.Authorization), http.StatusBadRequest)
 			return

@@ -70,7 +70,7 @@ func (c *Client) authedRequest(req *http.Request) (*http.Response, []byte, error
 		}
 	}
 	req.Header.Add(app.IDHeader, c.ID)
-	req.Header.Add(jwt.Authorization, c.token.Bearer)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(c.token.Bearer))
 	return c.makeRequest(req)
 }
 
