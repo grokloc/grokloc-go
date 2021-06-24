@@ -15,7 +15,6 @@ const Version = "v0"
 // TokenRequest is formatted as security.EncodedSHA256(id+api-secret)
 const (
 	IDHeader           = "X-GrokLOC-ID"
-	TokenHeader        = "X-GrokLOC-Token"
 	TokenRequestHeader = "X-GrokLOC-TokenRequest"
 )
 

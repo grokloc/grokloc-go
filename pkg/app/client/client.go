@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/grokloc/grokloc-go/pkg/app"
+	"github.com/grokloc/grokloc-go/pkg/jwt"
 	"github.com/grokloc/grokloc-go/pkg/security"
 )
 
@@ -69,7 +70,7 @@ func (c *Client) authedRequest(req *http.Request) (*http.Response, []byte, error
 		}
 	}
 	req.Header.Add(app.IDHeader, c.ID)
-	req.Header.Add(app.TokenHeader, c.token.Bearer)
+	req.Header.Add(jwt.Authorization, c.token.Bearer)
 	return c.makeRequest(req)
 }
 

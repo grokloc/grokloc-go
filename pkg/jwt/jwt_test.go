@@ -67,6 +67,12 @@ func (s *JWTSuite) TestJWT() {
 	require.Error(s.T(), err)
 }
 
+func (s *JWTSuite) TestHeaderVal() {
+	token := uuid.NewString() // it just needs to be some string
+	require.Equal(s.T(), token, FromHeaderVal(ToHeaderVal(token)))
+	require.Equal(s.T(), token, FromHeaderVal(token))
+}
+
 func TestJWTSuite(t *testing.T) {
 	suite.Run(t, new(JWTSuite))
 }

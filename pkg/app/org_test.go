@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/grokloc/grokloc-go/pkg/env"
+	"github.com/grokloc/grokloc-go/pkg/jwt"
 	"github.com/grokloc/grokloc-go/pkg/models/org"
 	"github.com/grokloc/grokloc-go/pkg/security"
 	"github.com/grokloc/grokloc-go/pkg/util"
@@ -71,7 +72,7 @@ func (s *OrgSuite) TestCreateOrg() {
 	req, err := http.NewRequest(http.MethodPost, s.ts.URL+OrgRoute, bytes.NewBuffer(bs))
 	require.Nil(s.T(), err)
 	req.Header.Add(IDHeader, s.srv.ST.RootUser)
-	req.Header.Add(TokenHeader, s.token.Bearer)
+	req.Header.Add(jwt.Authorization, s.token.Bearer)
 	resp, err := s.c.Do(req)
 	require.Nil(s.T(), err)
 	require.Equal(s.T(), http.StatusCreated, resp.StatusCode)
@@ -88,7 +89,7 @@ func (s *OrgSuite) TestCreateOrgBadPayload() {
 	req, err := http.NewRequest(http.MethodPost, s.ts.URL+OrgRoute, bytes.NewBuffer([]byte(uuid.NewString())))
 	require.Nil(s.T(), err)
 	req.Header.Add(IDHeader, s.srv.ST.RootUser)
-	req.Header.Add(TokenHeader, s.token.Bearer)
+	req.Header.Add(jwt.Authorization, s.token.Bearer)
 	resp, err := s.c.Do(req)
 	require.Nil(s.T(), err)
 	require.Equal(s.T(), http.StatusBadRequest, resp.StatusCode)
@@ -114,7 +115,7 @@ func (s *OrgSuite) TestCreateOrgNotRoot() {
 	req, err = http.NewRequest(http.MethodPost, s.ts.URL+OrgRoute, bytes.NewBuffer(bs))
 	require.Nil(s.T(), err)
 	req.Header.Add(IDHeader, u.ID)
-	req.Header.Add(TokenHeader, tok.Bearer)
+	req.Header.Add(jwt.Authorization, tok.Bearer)
 	resp, err = s.c.Do(req)
 	require.Nil(s.T(), err)
 	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
@@ -137,7 +138,7 @@ func (s *OrgSuite) TestReadOrg() {
 	require.Nil(s.T(), err)
 	req, err = http.NewRequest(http.MethodGet, s.ts.URL+OrgRoute+"/"+o.ID, nil)
 	req.Header.Add(IDHeader, u.ID)
-	req.Header.Add(TokenHeader, tok.Bearer)
+	req.Header.Add(jwt.Authorization, tok.Bearer)
 	require.Nil(s.T(), err)
 	resp, err = s.c.Do(req)
 	require.Nil(s.T(), err)
@@ -156,7 +157,7 @@ func (s *OrgSuite) TestReadOrg() {
 	req, err = http.NewRequest(http.MethodGet, s.ts.URL+OrgRoute+"/"+o.ID, nil)
 	require.Nil(s.T(), err)
 	req.Header.Add(IDHeader, s.srv.ST.RootUser)
-	req.Header.Add(TokenHeader, s.token.Bearer)
+	req.Header.Add(jwt.Authorization, s.token.Bearer)
 	resp, err = s.c.Do(req)
 	require.Nil(s.T(), err)
 	respBody, err = io.ReadAll(resp.Body)
@@ -184,7 +185,7 @@ func (s *OrgSuite) TestReadOtherOrg() {
 	// root org cannot be read by u
 	req, err = http.NewRequest(http.MethodGet, s.ts.URL+OrgRoute+"/"+s.srv.ST.RootOrg, nil)
 	req.Header.Add(IDHeader, u.ID)
-	req.Header.Add(TokenHeader, tok.Bearer)
+	req.Header.Add(jwt.Authorization, tok.Bearer)
 	require.Nil(s.T(), err)
 	resp, err = s.c.Do(req)
 	require.Nil(s.T(), err)
@@ -195,7 +196,7 @@ func (s *OrgSuite) TestReadOrgNotFound() {
 	req, err := http.NewRequest(http.MethodGet, s.ts.URL+OrgRoute+"/"+uuid.NewString(), nil)
 	require.Nil(s.T(), err)
 	req.Header.Add(IDHeader, s.srv.ST.RootUser)
-	req.Header.Add(TokenHeader, s.token.Bearer)
+	req.Header.Add(jwt.Authorization, s.token.Bearer)
 	resp, err := s.c.Do(req)
 	require.Nil(s.T(), err)
 	require.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
