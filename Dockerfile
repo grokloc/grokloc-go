@@ -7,7 +7,7 @@ RUN curl -sSfL https://golang.org/dl/$GO_TGZ | tar xz
 ENV PATH="/go/bin:/gopath/bin:${PATH}"
 RUN mkdir -p gopath/bin
 ENV GOPATH="/gopath"
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /gopath/bin v1.40.1
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b /gopath/bin v1.41.1
 RUN go get -u golang.org/x/lint/golint
 RUN apt-get -y purge curl
 RUN apt-get -y autoremove && apt-get clean
