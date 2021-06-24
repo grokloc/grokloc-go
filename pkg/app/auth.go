@@ -23,10 +23,10 @@ type Session struct {
 	User user.Instance
 }
 
-// GetUserAndOrg reads the user and org using the X-GrokLOC-ID header,
+// WithSession reads the user and org using the X-GrokLOC-ID header,
 // performs basic validation, and then adds a user and org instance to
 // the context.
-func (srv *Instance) GetUserAndOrg(next http.Handler) http.Handler {
+func (srv *Instance) WithSession(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		defer srv.ST.L.Sync() // nolint
@@ -75,8 +75,8 @@ func (srv *Instance) GetUserAndOrg(next http.Handler) http.Handler {
 		session := &Session{Org: *org, User: *user}
 
 		authLevel := AuthUser
-		if session.User.ID == srv.ST.RootUser &&
-			session.Org.ID == srv.ST.RootOrg {
+		if session.Org.ID == srv.ST.RootOrg {
+			// allow for multiple accounts in root org
 			authLevel = AuthRoot
 		} else if session.Org.Owner == session.User.ID {
 			authLevel = AuthOrg
@@ -89,19 +89,15 @@ func (srv *Instance) GetUserAndOrg(next http.Handler) http.Handler {
 	return http.HandlerFunc(fn)
 }
 
-// VerifyToken extracts the JWT from the X-GrokLOC-Token header
+// WithToken extracts the JWT from the X-GrokLOC-Token header
 // and validates the claims
-func (srv Instance) VerifyToken(next http.Handler) http.Handler {
+func (srv Instance) WithToken(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		defer srv.ST.L.Sync() // nolint
-		sugar := srv.ST.L.Sugar()
 
 		session, ok := ctx.Value(sessionCtxKey).(Session)
 		if !ok {
-			sugar.Debugw("context session missing", "reqid", middleware.GetReqID(ctx))
-			http.Error(w, "internal error", http.StatusInternalServerError)
-			return
+			panic("session missing")
 		}
 		token := r.Header.Get(TokenHeader)
 		if len(token) == 0 {
@@ -140,9 +136,7 @@ func (srv *Instance) NewToken(w http.ResponseWriter, r *http.Request) {
 
 	session, ok := ctx.Value(sessionCtxKey).(Session)
 	if !ok {
-		sugar.Debugw("context session missing", "reqid", middleware.GetReqID(ctx))
-		http.Error(w, "internal error", http.StatusInternalServerError)
-		return
+		panic("session missing")
 	}
 	tokenRequest := r.Header.Get(TokenRequestHeader)
 	if len(tokenRequest) == 0 {

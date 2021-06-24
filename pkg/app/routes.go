@@ -39,19 +39,19 @@ func (srv *Instance) Router() *chi.Mux {
 	r.Get(OkRoute, Ok)
 
 	r.Route(TokenRoute, func(r chi.Router) {
-		r.Use(srv.GetUserAndOrg)
+		r.Use(srv.WithSession)
 		r.Put("/", srv.NewToken)
 	})
 
 	r.Route(APIPath, func(r chi.Router) {
-		r.Use(srv.GetUserAndOrg)
-		r.Use(srv.VerifyToken)
+		r.Use(srv.WithSession)
+		r.Use(srv.WithToken)
 		r.Get(StatusPath, Ok)
 	})
 
 	r.Route(OrgRoute, func(r chi.Router) {
-		r.Use(srv.GetUserAndOrg)
-		r.Use(srv.VerifyToken)
+		r.Use(srv.WithSession)
+		r.Use(srv.WithToken)
 		r.Post("/", srv.CreateOrg)
 		r.Get(fmt.Sprintf("/{%s}", IDParam), srv.ReadOrg)
 		r.Put(fmt.Sprintf("/{%s}", IDParam), srv.UpdateOrg)

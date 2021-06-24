@@ -57,7 +57,7 @@ func (s *SessionSuite) SetupTest() {
 
 	rtr := chi.NewRouter()
 	rtr.Route("/", func(rtr chi.Router) {
-		rtr.Use(s.srv.GetUserAndOrg)
+		rtr.Use(s.srv.WithSession)
 
 		// OK handler that only wants a valid user/org
 		rtr.Get("/", okHandler)
@@ -66,7 +66,7 @@ func (s *SessionSuite) SetupTest() {
 		rtr.Put("/token", s.srv.NewToken)
 
 		rtr.Route("/verify", func(rtr chi.Router) {
-			rtr.Use(s.srv.VerifyToken)
+			rtr.Use(s.srv.WithToken)
 
 			// OK handler that also wants a valid token header
 			rtr.Get("/", okHandler)
