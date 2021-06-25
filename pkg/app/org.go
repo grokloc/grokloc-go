@@ -57,14 +57,14 @@ func (srv Instance) CreateOrg(w http.ResponseWriter, r *http.Request) {
 
 	o, err := org.New(m.Name)
 	if err != nil {
-		http.Error(w, "malformed org name", http.StatusBadRequest)
+		http.Error(w, "malformed org args", http.StatusBadRequest)
 		return
 	}
 
 	err = o.Insert(ctx, srv.ST.Master)
 	if err != nil {
 		if err == models.ErrConflict {
-			http.Error(w, "duplicate org name", http.StatusConflict)
+			http.Error(w, "duplicate org args", http.StatusConflict)
 			return
 		}
 		sugar.Debugw("insert org",
