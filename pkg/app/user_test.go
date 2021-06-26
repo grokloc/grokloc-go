@@ -103,7 +103,6 @@ func (s *UserSuite) TestCreateUser() {
 	var tok Token
 	err = json.Unmarshal(respBody, &tok)
 	require.Nil(s.T(), err)
-
 	bs, err = json.Marshal(CreateUserMsg{
 		DisplayName: uuid.NewString(),
 		Email:       uuid.NewString(),
@@ -169,7 +168,7 @@ func (s *UserSuite) TestCreateUserForbidden() {
 	req.Header.Add(TokenRequestHeader, security.EncodedSHA256(rUser.ID+rUser.APISecret))
 	resp, err = s.c.Do(req)
 	require.Nil(s.T(), err)
-	respBody, _ = io.ReadAll(resp.Body)
+	respBody, err = io.ReadAll(resp.Body)
 	require.Nil(s.T(), err)
 	err = json.Unmarshal(respBody, &tok)
 	require.Nil(s.T(), err)
@@ -187,6 +186,34 @@ func (s *UserSuite) TestCreateUserForbidden() {
 	resp, err = s.c.Do(req)
 	require.Nil(s.T(), err)
 	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
+}
+
+func (s *UserSuite) TestReadUser() {
+	_, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	req, err := http.NewRequest(http.MethodGet, s.ts.URL+UserRoute+"/"+u.ID, nil)
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, s.srv.ST.RootUser)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(s.token.Bearer))
+	resp, err := s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	respBody, err := io.ReadAll(resp.Body)
+	require.Nil(s.T(), err)
+	var uRead user.Instance
+	err = json.Unmarshal(respBody, &uRead)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), u.ID, uRead.ID)
+	require.Equal(s.T(), u.APISecret, uRead.APISecret)
+	require.Equal(s.T(), u.APISecretDigest, uRead.APISecretDigest)
+	require.Equal(s.T(), u.DisplayName, uRead.DisplayName)
+	require.Equal(s.T(), u.DisplayNameDigest, uRead.DisplayNameDigest)
+	require.Equal(s.T(), u.Email, uRead.Email)
+	require.Equal(s.T(), u.EmailDigest, uRead.EmailDigest)
+	require.Equal(s.T(), u.Org, uRead.Org)
+	require.NotEqual(s.T(), u.Password, uRead.Password) // not returned in read
+	require.NotEqual(s.T(), u.Meta.Ctime, uRead.Meta.Ctime)
+	require.NotEqual(s.T(), u.Meta.Mtime, uRead.Meta.Mtime)
 }
 
 func TestUserSuite(t *testing.T) {
