@@ -154,7 +154,7 @@ func (s *UserSuite) TestCreateUserForbidden() {
 	require.Nil(s.T(), err)
 	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
 
-	// as regular user in org
+	// as regular user in org (needs ReadUser)
 }
 
 func TestUserSuite(t *testing.T) {

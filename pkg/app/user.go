@@ -1,10 +1,12 @@
 package app
 
 import (
+	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/grokloc/grokloc-go/pkg/models"
 	"github.com/grokloc/grokloc-go/pkg/models/user"
@@ -83,4 +85,72 @@ func (srv Instance) CreateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("location", UserRoute+"/"+u.ID)
 	w.WriteHeader(http.StatusCreated)
+}
+
+// ReadUser reads a user
+func (srv Instance) ReadUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	defer srv.ST.L.Sync() // nolint
+	sugar := srv.ST.L.Sugar()
+
+	id := chi.URLParam(r, IDParam)
+	if len(id) == 0 {
+		panic("id missing")
+	}
+
+	authLevel, ok := ctx.Value(authLevelCtxKey).(int)
+	if !ok {
+		panic("auth missing")
+	}
+	session, ok := ctx.Value(sessionCtxKey).(Session)
+	if !ok {
+		panic("session missing")
+	}
+
+	var u *user.Instance
+	if authLevel == AuthUser {
+		if session.User.ID == id {
+			u = &session.User
+		} else {
+			http.Error(w, "cannot read another user", http.StatusForbidden)
+			return
+		}
+	}
+
+	var err error
+	if u == nil {
+		u, err = user.Read(ctx, srv.ST.Master, srv.ST.Key, id)
+		if err != nil {
+			if err == sql.ErrNoRows {
+				http.Error(w, "user not found or inactive", http.StatusNotFound)
+				return
+			}
+			sugar.Debugw("read user",
+				"reqid", middleware.GetReqID(ctx),
+				"err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if authLevel == AuthOrg {
+		if session.Org.ID != u.Org {
+			http.Error(w, "not a member of requested org", http.StatusForbidden)
+			return
+		}
+	}
+
+	bs, err := json.Marshal(u)
+	if err != nil {
+		sugar.Debugw("marshal user",
+			"reqid", middleware.GetReqID(ctx),
+			"err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("content-type", "application/json")
+	_, err = w.Write(bs)
+	if err != nil {
+		panic(err.Error())
+	}
 }
