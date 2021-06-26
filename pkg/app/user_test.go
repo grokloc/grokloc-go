@@ -214,6 +214,19 @@ func (s *UserSuite) TestReadUser() {
 	require.NotEqual(s.T(), u.Password, uRead.Password) // not returned in read
 	require.NotEqual(s.T(), u.Meta.Ctime, uRead.Meta.Ctime)
 	require.NotEqual(s.T(), u.Meta.Mtime, uRead.Meta.Mtime)
+
+	// create regular user rUser in o
+
+	// org owner read rUser
+
+	// rUser read their own record
+}
+
+func (s *UserSuite) TestReadUserForbidden() {
+	// org owner read into other other org
+
+	// regular user try to read anything other than their own id
+	require.True(s.T(), true)
 }
 
 func TestUserSuite(t *testing.T) {
