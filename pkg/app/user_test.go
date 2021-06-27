@@ -293,6 +293,16 @@ func (s *UserSuite) TestReadUser() {
 	require.NotEqual(s.T(), rUser.Meta.Mtime, uRead.Meta.Mtime)
 }
 
+func (s *UserSuite) TestReadUserNotFound() {
+	req, err := http.NewRequest(http.MethodGet, s.ts.URL+UserRoute+"/"+uuid.NewString(), nil)
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, s.srv.ST.RootUser)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(s.token.Bearer))
+	resp, err := s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
+}
+
 func (s *UserSuite) TestReadUserForbidden() {
 	// org owner read into other other org
 	o, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)

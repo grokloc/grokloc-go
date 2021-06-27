@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/grokloc/grokloc-go/pkg/models"
 	"github.com/grokloc/grokloc-go/pkg/models/user"
+	"github.com/grokloc/grokloc-go/pkg/security"
 )
 
 // CreateUserMsg is what a client should marshal to send as a json body to CreateUser
@@ -18,6 +19,16 @@ type CreateUserMsg struct {
 	Email       string `json:"email"`
 	Org         string `json:"org"`
 	Password    string `json:"password"`
+}
+
+// UpdateUserDisplayNameMsg is the body format to update the user display name
+type UpdateUserDisplayNameMsg struct {
+	DisplayName string `json:"display_name"`
+}
+
+// UpdateUserPasswordMsg is the body format to update the user password
+type UpdateUserPasswordMsg struct {
+	Password string `json:"password"`
 }
 
 // CreateUser creates a new org based on seed data in the POST body
@@ -153,4 +164,123 @@ func (srv Instance) ReadUser(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err.Error())
 	}
+}
+
+// UpdateUser updates user display name, password, or status
+func (srv Instance) UpdateUser(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	defer srv.ST.L.Sync() // nolint
+	sugar := srv.ST.L.Sugar()
+
+	id := chi.URLParam(r, IDParam)
+	if len(id) == 0 {
+		panic("id missing")
+	}
+
+	authLevel, ok := ctx.Value(authLevelCtxKey).(int)
+	if !ok {
+		panic("auth missing")
+	}
+	session, ok := ctx.Value(sessionCtxKey).(Session)
+	if !ok {
+		panic("session missing")
+	}
+
+	if authLevel == AuthUser {
+		http.Error(w, "auth inadequate", http.StatusForbidden)
+		return
+	}
+
+	u, err := user.Read(ctx, srv.ST.RandomReplica(), srv.ST.Key, id)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "user not found or inactive", http.StatusNotFound)
+			return
+		}
+		sugar.Debugw("read user",
+			"reqid", middleware.GetReqID(ctx),
+			"err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	if authLevel == AuthOrg {
+		if session.Org.ID != u.Org {
+			http.Error(w, "not a member of requested org", http.StatusForbidden)
+			return
+		}
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		sugar.Debugw("read body",
+			"reqid", middleware.GetReqID(ctx),
+			"err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// only one column update per call is allowed
+	// try matching on display name update
+	var displayNameMsg UpdateUserDisplayNameMsg
+	err = json.Unmarshal(body, &displayNameMsg)
+	if err == nil {
+		err := u.UpdateDisplayName(ctx, srv.ST.Master, srv.ST.Key, displayNameMsg.DisplayName)
+		if err != nil {
+			sugar.Debugw("update display name",
+				"reqid", middleware.GetReqID(ctx),
+				"err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// try matching on password update
+	var passwordMsg UpdateUserPasswordMsg
+	err = json.Unmarshal(body, &passwordMsg)
+	if err == nil {
+		derived, err := security.DerivePassword(passwordMsg.Password, srv.ST.Argon2Cfg)
+		if err != nil {
+			sugar.Debugw("update password",
+				"reqid", middleware.GetReqID(ctx),
+				"err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		err = u.UpdatePassword(ctx, srv.ST.Master, derived)
+		if err != nil {
+			sugar.Debugw("update password",
+				"reqid", middleware.GetReqID(ctx),
+				"err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// try matching on status update
+	var statusMsg UpdateStatusMsg
+	err = json.Unmarshal(body, &statusMsg)
+	if err == nil {
+		err := u.UpdateStatus(ctx, srv.ST.Master, statusMsg.Status)
+		if err != nil {
+			if err == models.ErrDisallowedValue {
+				http.Error(w, "status value disallowed", http.StatusBadRequest)
+				return
+			}
+			sugar.Debugw("update status",
+				"reqid", middleware.GetReqID(ctx),
+				"err", err)
+			http.Error(w, "internal error", http.StatusInternalServerError)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// no update formats matched
+	http.Error(w, "malformed update msg", http.StatusBadRequest)
 }

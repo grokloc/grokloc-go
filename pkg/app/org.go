@@ -17,8 +17,7 @@ type CreateOrgMsg struct {
 	Name string `json:"name"`
 }
 
-// UpdateOrgOwnerMsg is what a client should marshal to send as a json body to
-// UpdateOrgOwner
+// UpdateOrgOwnerMsg is the body format for updating the org owner
 type UpdateOrgOwnerMsg struct {
 	Owner string `json:"owner"`
 }
@@ -185,7 +184,8 @@ func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// try matching on owner update
+	// only one column update per call is allowed
+	// try matching on owner update msg
 	var ownerMsg UpdateOrgOwnerMsg
 	err = json.Unmarshal(body, &ownerMsg)
 	if err == nil {
@@ -215,7 +215,7 @@ func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "status value disallowed", http.StatusBadRequest)
 				return
 			}
-			sugar.Debugw("update owner",
+			sugar.Debugw("update status",
 				"reqid", middleware.GetReqID(ctx),
 				"err", err)
 			http.Error(w, "internal error", http.StatusInternalServerError)
@@ -226,5 +226,5 @@ func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// no update formats matched
-	http.Error(w, "malformed update", http.StatusBadRequest)
+	http.Error(w, "malformed update msg", http.StatusBadRequest)
 }
