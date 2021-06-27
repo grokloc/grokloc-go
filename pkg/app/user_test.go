@@ -189,7 +189,7 @@ func (s *UserSuite) TestCreateUserForbidden() {
 }
 
 func (s *UserSuite) TestReadUser() {
-	_, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	o, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
 	require.Nil(s.T(), err)
 	req, err := http.NewRequest(http.MethodGet, s.ts.URL+UserRoute+"/"+u.ID, nil)
 	require.Nil(s.T(), err)
@@ -216,10 +216,81 @@ func (s *UserSuite) TestReadUser() {
 	require.NotEqual(s.T(), u.Meta.Mtime, uRead.Meta.Mtime)
 
 	// create regular user rUser in o
+	rUser, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, uuid.NewString())
+	require.Nil(s.T(), err)
+	err = rUser.Insert(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	err = rUser.UpdateStatus(s.ctx, s.srv.ST.Master, models.StatusActive)
+	require.Nil(s.T(), err)
 
-	// org owner read rUser
+	// org owner u read new user rUser
+	req, err = http.NewRequest(http.MethodPut, s.ts.URL+TokenRoute, nil)
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, u.ID)
+	req.Header.Add(TokenRequestHeader, security.EncodedSHA256(u.ID+u.APISecret))
+	resp, err = s.c.Do(req)
+	require.Nil(s.T(), err)
+	respBody, err = io.ReadAll(resp.Body)
+	require.Nil(s.T(), err)
+	var tok Token
+	err = json.Unmarshal(respBody, &tok)
+	require.Nil(s.T(), err)
+	req, err = http.NewRequest(http.MethodGet, s.ts.URL+UserRoute+"/"+rUser.ID, nil)
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, u.ID)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(tok.Bearer))
+	resp, err = s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	respBody, err = io.ReadAll(resp.Body)
+	require.Nil(s.T(), err)
+	err = json.Unmarshal(respBody, &uRead)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), rUser.ID, uRead.ID)
+	require.Equal(s.T(), rUser.APISecret, uRead.APISecret)
+	require.Equal(s.T(), rUser.APISecretDigest, uRead.APISecretDigest)
+	require.Equal(s.T(), rUser.DisplayName, uRead.DisplayName)
+	require.Equal(s.T(), rUser.DisplayNameDigest, uRead.DisplayNameDigest)
+	require.Equal(s.T(), rUser.Email, uRead.Email)
+	require.Equal(s.T(), rUser.EmailDigest, uRead.EmailDigest)
+	require.Equal(s.T(), rUser.Org, uRead.Org)
+	require.NotEqual(s.T(), rUser.Password, uRead.Password) // not returned in read
+	require.NotEqual(s.T(), rUser.Meta.Ctime, uRead.Meta.Ctime)
+	require.NotEqual(s.T(), rUser.Meta.Mtime, uRead.Meta.Mtime)
 
-	// rUser read their own record
+	// uRead read their own record
+	req, err = http.NewRequest(http.MethodPut, s.ts.URL+TokenRoute, nil)
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, rUser.ID)
+	req.Header.Add(TokenRequestHeader, security.EncodedSHA256(rUser.ID+rUser.APISecret))
+	resp, err = s.c.Do(req)
+	require.Nil(s.T(), err)
+	respBody, err = io.ReadAll(resp.Body)
+	require.Nil(s.T(), err)
+	err = json.Unmarshal(respBody, &tok)
+	require.Nil(s.T(), err)
+	req, err = http.NewRequest(http.MethodGet, s.ts.URL+UserRoute+"/"+rUser.ID, nil)
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, rUser.ID)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(tok.Bearer))
+	resp, err = s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	respBody, err = io.ReadAll(resp.Body)
+	require.Nil(s.T(), err)
+	err = json.Unmarshal(respBody, &uRead)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), rUser.ID, uRead.ID)
+	require.Equal(s.T(), rUser.APISecret, uRead.APISecret)
+	require.Equal(s.T(), rUser.APISecretDigest, uRead.APISecretDigest)
+	require.Equal(s.T(), rUser.DisplayName, uRead.DisplayName)
+	require.Equal(s.T(), rUser.DisplayNameDigest, uRead.DisplayNameDigest)
+	require.Equal(s.T(), rUser.Email, uRead.Email)
+	require.Equal(s.T(), rUser.EmailDigest, uRead.EmailDigest)
+	require.Equal(s.T(), rUser.Org, uRead.Org)
+	require.NotEqual(s.T(), rUser.Password, uRead.Password) // not returned in read
+	require.NotEqual(s.T(), rUser.Meta.Ctime, uRead.Meta.Ctime)
+	require.NotEqual(s.T(), rUser.Meta.Mtime, uRead.Meta.Mtime)
 }
 
 func (s *UserSuite) TestReadUserForbidden() {
