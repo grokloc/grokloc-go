@@ -224,7 +224,9 @@ func (srv Instance) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// try matching on display name update
 	var displayNameMsg UpdateUserDisplayNameMsg
 	err = json.Unmarshal(body, &displayNameMsg)
-	if err == nil {
+	// err may be non-nil even in the event of a body for a different update,
+	// so also check the display name len
+	if err == nil && len(displayNameMsg.DisplayName) != 0 {
 		err := u.UpdateDisplayName(ctx, srv.ST.Master, srv.ST.Key, displayNameMsg.DisplayName)
 		if err != nil {
 			sugar.Debugw("update display name",
@@ -240,7 +242,9 @@ func (srv Instance) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// try matching on password update
 	var passwordMsg UpdateUserPasswordMsg
 	err = json.Unmarshal(body, &passwordMsg)
-	if err == nil {
+	// err may be non-nil even in the event of a body for a different update,
+	// so also check the password len
+	if err == nil && len(passwordMsg.Password) != 0 {
 		derived, err := security.DerivePassword(passwordMsg.Password, srv.ST.Argon2Cfg)
 		if err != nil {
 			sugar.Debugw("update password",

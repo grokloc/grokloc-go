@@ -14,7 +14,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/grokloc/grokloc-go/pkg/env"
 	"github.com/grokloc/grokloc-go/pkg/jwt"
+	"github.com/grokloc/grokloc-go/pkg/models"
 	"github.com/grokloc/grokloc-go/pkg/models/org"
+	"github.com/grokloc/grokloc-go/pkg/models/user"
 	"github.com/grokloc/grokloc-go/pkg/security"
 	"github.com/grokloc/grokloc-go/pkg/util"
 	"github.com/stretchr/testify/require"
@@ -200,6 +202,84 @@ func (s *OrgSuite) TestReadOrgNotFound() {
 	resp, err := s.c.Do(req)
 	require.Nil(s.T(), err)
 	require.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
+}
+
+func (s *OrgSuite) TestUpdateOrg() {
+	o, _, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	derived, err := security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
+	require.Nil(s.T(), err)
+	rUser, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, derived)
+	require.Nil(s.T(), err)
+	err = rUser.Insert(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	err = rUser.UpdateStatus(s.ctx, s.srv.ST.Master, models.StatusActive)
+	require.Nil(s.T(), err)
+
+	bs, err := json.Marshal(UpdateOrgOwnerMsg{Owner: rUser.ID})
+	require.Nil(s.T(), err)
+	req, err := http.NewRequest(http.MethodPut, s.ts.URL+OrgRoute+"/"+o.ID, bytes.NewBuffer(bs))
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, s.srv.ST.RootUser)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(s.token.Bearer))
+	resp, err := s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusNoContent, resp.StatusCode)
+	oRead, err := org.Read(s.ctx, s.srv.ST.RandomReplica(), o.ID)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), rUser.ID, oRead.Owner)
+
+	bs, err = json.Marshal(UpdateStatusMsg{Status: models.StatusInactive})
+	require.Nil(s.T(), err)
+	req, err = http.NewRequest(http.MethodPut, s.ts.URL+OrgRoute+"/"+o.ID, bytes.NewBuffer(bs))
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, s.srv.ST.RootUser)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(s.token.Bearer))
+	resp, err = s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusNoContent, resp.StatusCode)
+	oRead, err = org.Read(s.ctx, s.srv.ST.RandomReplica(), o.ID)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), models.StatusInactive, oRead.Meta.Status)
+}
+
+func (s *OrgSuite) TestUpdateOrgForbidden() {
+	o, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	req, err := http.NewRequest(http.MethodPut, s.ts.URL+TokenRoute, nil)
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, u.ID)
+	req.Header.Add(TokenRequestHeader, security.EncodedSHA256(u.ID+u.APISecret))
+	resp, err := s.c.Do(req)
+	require.Nil(s.T(), err)
+	respBody, err := io.ReadAll(resp.Body)
+	require.Nil(s.T(), err)
+	var tok Token
+	err = json.Unmarshal(respBody, &tok)
+	require.Nil(s.T(), err)
+	bs, err := json.Marshal(UpdateStatusMsg{Status: models.StatusInactive})
+	require.Nil(s.T(), err)
+	req, err = http.NewRequest(http.MethodPut, s.ts.URL+OrgRoute+"/"+o.ID, bytes.NewBuffer(bs))
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, u.ID)
+	req.Header.Add(jwt.Authorization, tok.Bearer)
+	resp, err = s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
+}
+
+func (s *OrgSuite) TestUpdateOrgBadUpdate() {
+	o, _, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	bs, err := json.Marshal(map[string]interface{}{"x": 1})
+	require.Nil(s.T(), err)
+	req, err := http.NewRequest(http.MethodPut, s.ts.URL+OrgRoute+"/"+o.ID, bytes.NewBuffer(bs))
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, s.srv.ST.RootUser)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(s.token.Bearer))
+	resp, err := s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestOrgSuite(t *testing.T) {

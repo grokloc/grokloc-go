@@ -188,7 +188,9 @@ func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 	// try matching on owner update msg
 	var ownerMsg UpdateOrgOwnerMsg
 	err = json.Unmarshal(body, &ownerMsg)
-	if err == nil {
+	// err may be non-nil even in the event of a body for a different update,
+	// so also check the owner len
+	if err == nil && len(ownerMsg.Owner) != 0 {
 		err := o.UpdateOwner(ctx, srv.ST.Master, ownerMsg.Owner)
 		if err != nil {
 			if err == models.ErrRelatedUser {
@@ -208,6 +210,7 @@ func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 	// try matching on status update
 	var statusMsg UpdateStatusMsg
 	err = json.Unmarshal(body, &statusMsg)
+	// err will be non-nil if unmarshal fails - we have a custom unmarshal here
 	if err == nil {
 		err := o.UpdateStatus(ctx, srv.ST.Master, statusMsg.Status)
 		if err != nil {

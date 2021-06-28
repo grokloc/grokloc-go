@@ -2,6 +2,7 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
 
 	"github.com/grokloc/grokloc-go/pkg/models"
 )
@@ -14,15 +15,16 @@ type UpdateStatusMsg struct {
 
 // UnmarshalJSON is a custom unmarshal for UpdateStatusMsg
 func (m *UpdateStatusMsg) UnmarshalJSON(bs []byte) error {
-	type T struct {
-		Status int `json:"status"`
-	}
-	var t T
+	var t map[string]int
 	err := json.Unmarshal(bs, &t)
 	if err != nil {
 		return err
 	}
-	s, err := models.NewStatus(t.Status)
+	v, ok := t["status"]
+	if !ok {
+		return errors.New("no status field found")
+	}
+	s, err := models.NewStatus(v)
 	if err != nil {
 		return err
 	}
