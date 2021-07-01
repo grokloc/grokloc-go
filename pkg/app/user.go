@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -26,9 +27,39 @@ type UpdateUserDisplayNameMsg struct {
 	DisplayName string `json:"display_name"`
 }
 
+// UnmarshalJSON is a custom unmarshal for UpdateUserDisplayNameMsg
+func (m *UpdateUserDisplayNameMsg) UnmarshalJSON(bs []byte) error {
+	var t map[string]string
+	err := json.Unmarshal(bs, &t)
+	if err != nil {
+		return err
+	}
+	v, ok := t["display_name"]
+	if !ok {
+		return errors.New("no display_name field found")
+	}
+	m.DisplayName = v
+	return nil
+}
+
 // UpdateUserPasswordMsg is the body format to update the user password
 type UpdateUserPasswordMsg struct {
 	Password string `json:"password"`
+}
+
+// UnmarshalJSON is a custom unmarshal for UpdateUserPasswordMsg
+func (m *UpdateUserPasswordMsg) UnmarshalJSON(bs []byte) error {
+	var t map[string]string
+	err := json.Unmarshal(bs, &t)
+	if err != nil {
+		return err
+	}
+	v, ok := t["password"]
+	if !ok {
+		return errors.New("no password field found")
+	}
+	m.Password = v
+	return nil
 }
 
 // CreateUser creates a new org based on seed data in the POST body
@@ -224,9 +255,8 @@ func (srv Instance) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// try matching on display name update
 	var displayNameMsg UpdateUserDisplayNameMsg
 	err = json.Unmarshal(body, &displayNameMsg)
-	// err may be non-nil even in the event of a body for a different update,
-	// so also check the display name len
-	if err == nil && len(displayNameMsg.DisplayName) != 0 {
+	// err will be non-nil if unmarshal fails - we have a custom unmarshal here
+	if err == nil {
 		err := u.UpdateDisplayName(ctx, srv.ST.Master, srv.ST.Key, displayNameMsg.DisplayName)
 		if err != nil {
 			sugar.Debugw("update display name",
@@ -242,9 +272,8 @@ func (srv Instance) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// try matching on password update
 	var passwordMsg UpdateUserPasswordMsg
 	err = json.Unmarshal(body, &passwordMsg)
-	// err may be non-nil even in the event of a body for a different update,
-	// so also check the password len
-	if err == nil && len(passwordMsg.Password) != 0 {
+	// err will be non-nil if unmarshal fails - we have a custom unmarshal here
+	if err == nil {
 		derived, err := security.DerivePassword(passwordMsg.Password, srv.ST.Argon2Cfg)
 		if err != nil {
 			sugar.Debugw("update password",
@@ -268,6 +297,7 @@ func (srv Instance) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	// try matching on status update
 	var statusMsg UpdateStatusMsg
 	err = json.Unmarshal(body, &statusMsg)
+	// err will be non-nil if unmarshal fails - we have a custom unmarshal here
 	if err == nil {
 		err := u.UpdateStatus(ctx, srv.ST.Master, statusMsg.Status)
 		if err != nil {

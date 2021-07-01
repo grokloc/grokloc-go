@@ -3,6 +3,7 @@ package app
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -20,6 +21,21 @@ type CreateOrgMsg struct {
 // UpdateOrgOwnerMsg is the body format for updating the org owner
 type UpdateOrgOwnerMsg struct {
 	Owner string `json:"owner"`
+}
+
+// UnmarshalJSON is a custom unmarshal for UpdateOrgOwnerMsg
+func (m *UpdateOrgOwnerMsg) UnmarshalJSON(bs []byte) error {
+	var t map[string]string
+	err := json.Unmarshal(bs, &t)
+	if err != nil {
+		return err
+	}
+	v, ok := t["owner"]
+	if !ok {
+		return errors.New("no owner field found")
+	}
+	m.Owner = v
+	return nil
 }
 
 // CreateOrg creates a new org based on seed data in the POST body
@@ -54,6 +70,7 @@ func (srv Instance) CreateOrg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// New will catch Name being empty
 	o, err := org.New(m.Name)
 	if err != nil {
 		http.Error(w, "malformed org args", http.StatusBadRequest)
@@ -188,9 +205,8 @@ func (srv Instance) UpdateOrg(w http.ResponseWriter, r *http.Request) {
 	// try matching on owner update msg
 	var ownerMsg UpdateOrgOwnerMsg
 	err = json.Unmarshal(body, &ownerMsg)
-	// err may be non-nil even in the event of a body for a different update,
-	// so also check the owner len
-	if err == nil && len(ownerMsg.Owner) != 0 {
+	// err will be non-nil if unmarshal fails - we have a custom unmarshal here
+	if err == nil {
 		err := o.UpdateOwner(ctx, srv.ST.Master, ownerMsg.Owner)
 		if err != nil {
 			if err == models.ErrRelatedUser {
