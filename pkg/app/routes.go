@@ -64,7 +64,7 @@ func (srv *Instance) Router() *chi.Mux {
 		r.Use(srv.WithToken)
 		r.Post("/", srv.CreateUser)
 		r.Get(fmt.Sprintf("/{%s}", IDParam), srv.ReadUser)
-		// r.Put(fmt.Sprintf("/{%s}", IDParam), srv.UpdateUser)
+		r.Put(fmt.Sprintf("/{%s}", IDParam), srv.UpdateUser)
 	})
 
 	return r

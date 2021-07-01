@@ -282,6 +282,18 @@ func (s *OrgSuite) TestUpdateOrgBadUpdate() {
 	require.Equal(s.T(), http.StatusBadRequest, resp.StatusCode)
 }
 
+func (s *OrgSuite) TestUpdateOrgNotFound() {
+	bs, err := json.Marshal(UpdateOrgOwnerMsg{Owner: uuid.NewString()})
+	require.Nil(s.T(), err)
+	req, err := http.NewRequest(http.MethodPut, s.ts.URL+OrgRoute+"/"+uuid.NewString(), bytes.NewBuffer(bs))
+	require.Nil(s.T(), err)
+	req.Header.Add(IDHeader, s.srv.ST.RootUser)
+	req.Header.Add(jwt.Authorization, jwt.ToHeaderVal(s.token.Bearer))
+	resp, err := s.c.Do(req)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusNotFound, resp.StatusCode)
+}
+
 func TestOrgSuite(t *testing.T) {
 	suite.Run(t, new(OrgSuite))
 }
