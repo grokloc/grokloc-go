@@ -2,6 +2,7 @@
 package client
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -100,6 +101,28 @@ func (c *Client) Ok() (*http.Response, []byte, error) {
 // Status calls the /status endpoint
 func (c *Client) Status() (*http.Response, []byte, error) {
 	req, err := http.NewRequest(http.MethodGet, c.Host+app.StatusRoute, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// CreateOrg creates an org
+func (c *Client) CreateOrg(name string) (*http.Response, []byte, error) {
+	bs, err := json.Marshal(app.CreateOrgMsg{Name: name})
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := http.NewRequest(http.MethodPost, c.Host+app.OrgRoute, bytes.NewBuffer(bs))
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// ReadOrg reads an org
+func (c *Client) ReadOrg(id string) (*http.Response, []byte, error) {
+	req, err := http.NewRequest(http.MethodGet, c.Host+app.OrgRoute+"/"+id, nil)
 	if err != nil {
 		return nil, nil, err
 	}
