@@ -108,6 +108,8 @@ func (c *Client) Status() (*http.Response, []byte, error) {
 	return c.authedRequest(req)
 }
 
+// org related
+
 // CreateOrg creates an org
 func (c *Client) CreateOrg(name string) (*http.Response, []byte, error) {
 	bs, err := json.Marshal(app.CreateOrgMsg{Name: name})
@@ -150,6 +152,74 @@ func (c *Client) UpdateOrgStatus(id string, status models.Status) (*http.Respons
 		return nil, nil, err
 	}
 	req, err := http.NewRequest(http.MethodPut, c.Host+app.OrgRoute+"/"+id, bytes.NewBuffer(bs))
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// user related
+
+// CreateUser creates a user
+func (c *Client) CreateUser(displayName, email, org, password string) (*http.Response, []byte, error) {
+	bs, err := json.Marshal(app.CreateUserMsg{
+		DisplayName: displayName,
+		Email:       email,
+		Org:         org,
+		Password:    password,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := http.NewRequest(http.MethodPost, c.Host+app.UserRoute, bytes.NewBuffer(bs))
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// ReadUser reads a user
+func (c *Client) ReadUser(id string) (*http.Response, []byte, error) {
+	req, err := http.NewRequest(http.MethodGet, c.Host+app.UserRoute+"/"+id, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// UpdateUserDisplayName updates a user display name
+func (c *Client) UpdateUserDisplayName(id, displayName string) (*http.Response, []byte, error) {
+	bs, err := json.Marshal(app.UpdateUserDisplayNameMsg{DisplayName: displayName})
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := http.NewRequest(http.MethodPut, c.Host+app.UserRoute+"/"+id, bytes.NewBuffer(bs))
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// UpdateUserPassword updates a user password
+func (c *Client) UpdateUserPassword(id, password string) (*http.Response, []byte, error) {
+	bs, err := json.Marshal(app.UpdateUserPasswordMsg{Password: password})
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := http.NewRequest(http.MethodPut, c.Host+app.UserRoute+"/"+id, bytes.NewBuffer(bs))
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// UpdateUserStatus updates a user status
+func (c *Client) UpdateUserStatus(id string, status models.Status) (*http.Response, []byte, error) {
+	bs, err := json.Marshal(app.UpdateStatusMsg{Status: status})
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := http.NewRequest(http.MethodPut, c.Host+app.UserRoute+"/"+id, bytes.NewBuffer(bs))
 	if err != nil {
 		return nil, nil, err
 	}

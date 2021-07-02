@@ -94,7 +94,22 @@ func (srv Instance) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	u, err := user.New(m.DisplayName, m.Email, m.Org, m.Password)
+	derived, err := security.DerivePassword(m.Password, srv.ST.Argon2Cfg)
+	if err != nil {
+		sugar.Debugw("derive password",
+			"reqid", middleware.GetReqID(ctx),
+			"err", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	// cannot add to root org through the web api
+	if m.Org == srv.ST.RootOrg {
+		http.Error(w, "malformed user args", http.StatusForbidden)
+		return
+	}
+
+	u, err := user.New(m.DisplayName, m.Email, m.Org, derived)
 	if err != nil {
 		http.Error(w, "malformed user args", http.StatusBadRequest)
 		return

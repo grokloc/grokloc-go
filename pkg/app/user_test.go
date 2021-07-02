@@ -69,13 +69,11 @@ func (s *UserSuite) SetupTest() {
 func (s *UserSuite) TestCreateUser() {
 	o, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
 	require.Nil(s.T(), err)
-	derived, err := security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
-	require.Nil(s.T(), err)
 	bs, err := json.Marshal(CreateUserMsg{
 		DisplayName: uuid.NewString(),
 		Email:       uuid.NewString(),
 		Org:         o.ID,
-		Password:    derived,
+		Password:    uuid.NewString(),
 	})
 	require.Nil(s.T(), err)
 	req, err := http.NewRequest(http.MethodPost, s.ts.URL+UserRoute, bytes.NewBuffer(bs))
@@ -105,13 +103,11 @@ func (s *UserSuite) TestCreateUser() {
 	var tok Token
 	err = json.Unmarshal(respBody, &tok)
 	require.Nil(s.T(), err)
-	derived, err = security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
-	require.Nil(s.T(), err)
 	bs, err = json.Marshal(CreateUserMsg{
 		DisplayName: uuid.NewString(),
 		Email:       uuid.NewString(),
 		Org:         o.ID,
-		Password:    derived,
+		Password:    uuid.NewString(),
 	})
 	require.Nil(s.T(), err)
 	req, err = http.NewRequest(http.MethodPost, s.ts.URL+UserRoute, bytes.NewBuffer(bs))
@@ -142,13 +138,11 @@ func (s *UserSuite) TestCreateUserForbidden() {
 
 	oOther, _, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
 	require.Nil(s.T(), err)
-	derived, err := security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
-	require.Nil(s.T(), err)
 	bs, err := json.Marshal(CreateUserMsg{
 		DisplayName: uuid.NewString(),
 		Email:       uuid.NewString(),
 		Org:         oOther.ID,
-		Password:    derived,
+		Password:    uuid.NewString(),
 	})
 	require.Nil(s.T(), err)
 
@@ -162,9 +156,7 @@ func (s *UserSuite) TestCreateUserForbidden() {
 	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
 
 	// as regular user in org (just skip web api and create direct)
-	derived, err = security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
-	require.Nil(s.T(), err)
-	rUser, err := user.New(uuid.NewString(), uuid.NewString(), oOther.ID, derived)
+	rUser, err := user.New(uuid.NewString(), uuid.NewString(), oOther.ID, uuid.NewString())
 	require.Nil(s.T(), err)
 	err = rUser.Insert(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
 	require.Nil(s.T(), err)
@@ -180,13 +172,11 @@ func (s *UserSuite) TestCreateUserForbidden() {
 	require.Nil(s.T(), err)
 	err = json.Unmarshal(respBody, &tok)
 	require.Nil(s.T(), err)
-	derived, err = security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
-	require.Nil(s.T(), err)
 	bs, err = json.Marshal(CreateUserMsg{
 		DisplayName: uuid.NewString(),
 		Email:       uuid.NewString(),
 		Org:         oOther.ID,
-		Password:    derived,
+		Password:    uuid.NewString(),
 	})
 	require.Nil(s.T(), err)
 	req, err = http.NewRequest(http.MethodPost, s.ts.URL+UserRoute, bytes.NewBuffer(bs))
@@ -226,9 +216,7 @@ func (s *UserSuite) TestReadUser() {
 	require.NotEqual(s.T(), u.Meta.Mtime, uRead.Meta.Mtime)
 
 	// create regular user rUser in o
-	derived, err := security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
-	require.Nil(s.T(), err)
-	rUser, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, derived)
+	rUser, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, uuid.NewString())
 	require.Nil(s.T(), err)
 	err = rUser.Insert(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
 	require.Nil(s.T(), err)
@@ -341,9 +329,7 @@ func (s *UserSuite) TestReadUserForbidden() {
 	require.Equal(s.T(), http.StatusForbidden, resp.StatusCode)
 
 	// regular user try to read anything other than their own id
-	derived, err := security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
-	require.Nil(s.T(), err)
-	rUser, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, derived)
+	rUser, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, uuid.NewString())
 	require.Nil(s.T(), err)
 	err = rUser.Insert(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
 	require.Nil(s.T(), err)
@@ -371,9 +357,7 @@ func (s *UserSuite) TestReadUserForbidden() {
 func (s *UserSuite) TestUpdateUser() {
 	o, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
 	require.Nil(s.T(), err)
-	derived, err := security.DerivePassword(uuid.NewString(), s.srv.ST.Argon2Cfg)
-	require.Nil(s.T(), err)
-	rUser, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, derived)
+	rUser, err := user.New(uuid.NewString(), uuid.NewString(), o.ID, uuid.NewString())
 	require.Nil(s.T(), err)
 	err = rUser.Insert(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
 	require.Nil(s.T(), err)

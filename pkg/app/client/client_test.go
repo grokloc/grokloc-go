@@ -124,6 +124,92 @@ func (s *ClientSuite) TestUpdateOrgStatus() {
 	require.Equal(s.T(), models.StatusInactive, oRead.Meta.Status)
 }
 
+func (s *ClientSuite) TestCreateUser() {
+	c, err := NewClient(s.ts.URL, s.srv.ST.RootUser, s.srv.ST.RootUserAPISecret)
+	require.Nil(s.T(), err)
+	o, _, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	resp, _, err := c.CreateUser(uuid.NewString(), uuid.NewString(), o.ID, uuid.NewString())
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusCreated, resp.StatusCode)
+}
+
+func (s *ClientSuite) TestReadUser() {
+	c, err := NewClient(s.ts.URL, s.srv.ST.RootUser, s.srv.ST.RootUserAPISecret)
+	require.Nil(s.T(), err)
+	o, _, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	displayName := uuid.NewString()
+	email := uuid.NewString()
+	resp, _, err := c.CreateUser(displayName, email, o.ID, uuid.NewString())
+	require.Nil(s.T(), err)
+	location := resp.Header.Get("location")
+	require.NotEmpty(s.T(), location)
+	pathElts := strings.Split(location, "/")
+	require.True(s.T(), len(pathElts) != 0)
+	userID := pathElts[len(pathElts)-1]
+	var respBody []byte
+	resp, respBody, err = c.ReadUser(userID)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	var u user.Instance
+	err = json.Unmarshal(respBody, &u)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), userID, u.ID)
+	require.Equal(s.T(), o.ID, u.Org)
+	require.Equal(s.T(), displayName, u.DisplayName)
+	require.Equal(s.T(), email, u.Email)
+	require.True(s.T(), len(u.Password) == 0)
+}
+
+func (s *ClientSuite) TestUpdateUserDisplayName() {
+	_, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	c, err := NewClient(s.ts.URL, s.srv.ST.RootUser, s.srv.ST.RootUserAPISecret)
+	require.Nil(s.T(), err)
+	displayName := uuid.NewString()
+	resp, _, err := c.UpdateUserDisplayName(u.ID, displayName)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusNoContent, resp.StatusCode)
+	var respBody []byte
+	resp, respBody, err = c.ReadUser(u.ID)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusOK, resp.StatusCode)
+	var uRead user.Instance
+	err = json.Unmarshal(respBody, &uRead)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), displayName, uRead.DisplayName)
+}
+
+func (s *ClientSuite) TestUpdateUserPassword() {
+	_, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	c, err := NewClient(s.ts.URL, s.srv.ST.RootUser, s.srv.ST.RootUserAPISecret)
+	require.Nil(s.T(), err)
+	password := uuid.NewString()
+	resp, _, err := c.UpdateUserPassword(u.ID, password)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusNoContent, resp.StatusCode)
+	uRead, err := user.Read(s.ctx, s.srv.ST.RandomReplica(), s.srv.ST.Key, u.ID)
+	require.Nil(s.T(), err)
+	verified, err := security.VerifyPassword(password, uRead.Password)
+	require.Nil(s.T(), err)
+	require.True(s.T(), verified)
+}
+
+func (s *ClientSuite) TestUpdateUserStatus() {
+	_, u, err := util.NewOrgOwner(s.ctx, s.srv.ST.Master, s.srv.ST.Key)
+	require.Nil(s.T(), err)
+	c, err := NewClient(s.ts.URL, s.srv.ST.RootUser, s.srv.ST.RootUserAPISecret)
+	require.Nil(s.T(), err)
+	resp, _, err := c.UpdateUserStatus(u.ID, models.StatusInactive)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), http.StatusNoContent, resp.StatusCode)
+	uRead, err := user.Read(s.ctx, s.srv.ST.RandomReplica(), s.srv.ST.Key, u.ID)
+	require.Nil(s.T(), err)
+	require.Equal(s.T(), models.StatusInactive, uRead.Meta.Status)
+}
+
 func TestClientSuite(t *testing.T) {
 	suite.Run(t, new(ClientSuite))
 }
