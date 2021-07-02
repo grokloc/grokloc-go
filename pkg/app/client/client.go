@@ -12,6 +12,7 @@ import (
 
 	"github.com/grokloc/grokloc-go/pkg/app"
 	"github.com/grokloc/grokloc-go/pkg/jwt"
+	"github.com/grokloc/grokloc-go/pkg/models"
 	"github.com/grokloc/grokloc-go/pkg/security"
 )
 
@@ -123,6 +124,32 @@ func (c *Client) CreateOrg(name string) (*http.Response, []byte, error) {
 // ReadOrg reads an org
 func (c *Client) ReadOrg(id string) (*http.Response, []byte, error) {
 	req, err := http.NewRequest(http.MethodGet, c.Host+app.OrgRoute+"/"+id, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// UpdateOrgOwner updates an org owner
+func (c *Client) UpdateOrgOwner(id, owner string) (*http.Response, []byte, error) {
+	bs, err := json.Marshal(app.UpdateOrgOwnerMsg{Owner: owner})
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := http.NewRequest(http.MethodPut, c.Host+app.OrgRoute+"/"+id, bytes.NewBuffer(bs))
+	if err != nil {
+		return nil, nil, err
+	}
+	return c.authedRequest(req)
+}
+
+// UpdateOrgStatus updates an org status
+func (c *Client) UpdateOrgStatus(id string, status models.Status) (*http.Response, []byte, error) {
+	bs, err := json.Marshal(app.UpdateStatusMsg{Status: status})
+	if err != nil {
+		return nil, nil, err
+	}
+	req, err := http.NewRequest(http.MethodPut, c.Host+app.OrgRoute+"/"+id, bytes.NewBuffer(bs))
 	if err != nil {
 		return nil, nil, err
 	}
